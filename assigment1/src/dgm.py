@@ -49,6 +49,5 @@ class WeibullDistribution:
         self.rv = weibull_min
 
     def sample(self, n: int) -> np.array:
-        return self.rv.rvs(
-            self.beta, loc=0, scale=self.alpha, size=n, random_state=self.rng
-        )
+        sample = self.beta * np.pow(-np.log(self.rng.random(n)), self.alpha)
+        return sample
