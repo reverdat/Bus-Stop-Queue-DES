@@ -1,4 +1,6 @@
 """
+## plotting.py
+
 This module contains all functions
 which generate Matplotlib figures
 given a sample
