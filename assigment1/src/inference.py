@@ -6,7 +6,7 @@ different inference methods for the Weibull
 distribution parameters alpha and beta
 """
 
-from typing import Tuple, Literal
+from typing import Tuple, Literal, Callable
 
 from scipy.stats import linregress
 from scipy.special import betaincinv
@@ -14,9 +14,21 @@ import numpy as np
 
 from dgm import WeibullDistribution
 
+type EstimationMethod = Literal["mrr", "mle"]
+type MRREstimationMethod = Literal["beta", "roots", "bernard"]
+
+
+def estimation_method_dispatcher(estimation_method: EstimationMethod) -> Callable:
+    if estimation_method == "mrr":
+        return median_ranks_regression
+    elif estimation_method == "mle":
+        raise NotImplementedError("'mle' estimation method not implemented")
+    else:
+        raise ValueError(f"Unknown estimation method: {estimation_method}")
+
 
 def median_ranks_regression(
-    sample: np.array, method: Literal["beta", "roots", "bernard"] = "beta"
+    sample: np.array, method: MRREstimationMethod = "beta"
 ) -> Tuple[float]:
     """
     Performs Medians Rank Regression (MRR) estimation
@@ -52,16 +64,16 @@ def median_ranks_regression(
         raise NotImplementedError("`bernard` Median Rank Computation not implemented")
     else:
         raise ValueError(f"Uknown computation method: {method}")
-    
+
     # 3. Assume median_ranks is Weibull CDF and linearize
-    linear_probs = np.log(-np.log(1-median_ranks))
+    linear_probs = np.log(-np.log(1 - median_ranks))
 
     # 4. Fit Least Squares to the transformed sample of ranks as a linear function of the failure times
     fit_result = linregress(np.log(sorted_sample), linear_probs)
 
     # 5. Extract parameters from the linear fit
     beta = fit_result.slope
-    alpha = np.exp(-fit_result.intercept/beta)
+    alpha = np.exp(-fit_result.intercept / beta)
 
     return alpha, beta
 

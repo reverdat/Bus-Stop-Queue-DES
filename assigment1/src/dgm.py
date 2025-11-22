@@ -9,8 +9,6 @@ reproducibility.
 """
 
 import numpy as np
-from scipy.stats import weibull_min
-
 
 class WeibullDistribution:
     """
