@@ -44,12 +44,24 @@ class SimulationComparison:
         self.alpha = alpha
         self.beta = beta
         self.n = n
-
+        
+        self._check_estimation_methods_format(estimation_methods)
         self.estimation_methods = estimation_methods
         self.n_sim = n_sim
         self.rng = rng
 
         self.weibull = WeibullDistribution(self.alpha, self.beta, self.rng)
+    
+    def _check_estimation_methods_format(self, l: list):
+        if not isinstance(l, list):
+            raise TypeError("The estimation methods must be provided in a list.")
+
+        for i, item in enumerate(l):
+            if not isinstance(item, tuple):
+                raise TypeError(f"Item at index {i} is not a tuple: {item}")
+            
+            if not all(isinstance(s, str) for s in item):
+                raise TypeError(f"Tuple at index {i} must contain only strings.")
 
     def _generate_sample(self) -> np.array:
         return self.weibull.sample(self.n)
@@ -106,11 +118,14 @@ class SimulationComparison:
         for i, estimation_method in enumerate(self.estimation_methods):
             alpha_estimates: List[np.float64] = []
             beta_estimates: List[np.float64] = []
+            
+            method, algorithm = estimation_method
+
             estimation_func = estimation_method_dispatcher(
-                estimation_method=estimation_method
+                estimation_method=method
             )
             for sample in samples:
-                alpha, beta = estimation_func(sample)
+                alpha, beta = estimation_func(sample, method=algorithm)
                 alpha_estimates.append(alpha)
                 beta_estimates.append(beta)
 
@@ -133,17 +148,20 @@ class SimulationComparison:
             )
         if len(sim_results) == 1:
             return sim_results[0]
+
         else:  # If more than one estimation method is used, compute relative increase
             res_A = sim_results[0]  # Baseline (e.g. MLE)
             res_B = sim_results[1]  # Comparison method (e.g. MRR)
-
             comparison_metrics = []
 
-            for _ in ["alpha", "beta"]:
-                ests_A = res_A.param.estimates
-                ests_B = res_B.param.estimates
-                empse_A = res_A.param.empse
-                empse_B = res_B.param.empse
+            for attribute in ["alpha", "beta"]:
+                obj_A = getattr(res_A, attribute)
+                obj_B = getattr(res_B, attribute)
+
+                ests_A = obj_A.estimates
+                ests_B = obj_B.estimates
+                empse_A = obj_A.empse
+                empse_B = obj_B.empse
 
                 rho = np.corrcoef(ests_A, ests_B)[0, 1]
 
@@ -163,7 +181,7 @@ if __name__ == "__main__":
     rng = np.random.default_rng(seed)
 
     sim_1 = SimulationComparison(
-        alpha=2.0, beta=0.8, n=200, estimation_methods=["mrr"], n_sim=1000, rng=rng
+        alpha=2.0, beta=0.8, n=200, estimation_methods=[("mrr", "beta"), ("mrr", "bernard"), ("mle", "scipy")], n_sim=1000, rng=rng
     ).simulate()
 
     print(sim_1)

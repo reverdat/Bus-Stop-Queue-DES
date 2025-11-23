@@ -109,7 +109,6 @@ Alguns dels plots que caldria fer per presentar resultats:
 
     1. Veure Figura 1 del paper de simulation studies, corbes de bias, empse i
     mse com a funció del sample size per cadascun dels mètodes.
-
 """
 
 

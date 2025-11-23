@@ -8,7 +8,7 @@ distribution parameters alpha and beta
 
 from typing import Tuple, Literal, Callable
 
-from scipy.stats import linregress
+from scipy.stats import linregress, weibull_min
 from scipy.special import betaincinv
 import numpy as np
 
@@ -16,16 +16,25 @@ from dgm import WeibullDistribution
 
 type EstimationMethod = Literal["mrr", "mle"]
 type MRREstimationMethod = Literal["beta", "roots", "bernard"]
-
+type MLEEstimationMethod = Literal["scipy"]
 
 def estimation_method_dispatcher(estimation_method: EstimationMethod) -> Callable:
     if estimation_method == "mrr":
         return median_ranks_regression
     elif estimation_method == "mle":
-        raise NotImplementedError("'mle' estimation method not implemented")
+        return mle_estimator 
     else:
         raise ValueError(f"Unknown estimation method: {estimation_method}")
 
+def mle_estimator(sample: np.array, method: MLEEstimationMethod = "scipy") -> (float, float):
+    
+    if method != "scipy":
+        raise NotImplementedError("Just scipy")
+
+    n = len(sample)
+    # compute mle with scipy. loc=0 due to using a two parameter weibull
+    beta, loc, alpha = weibull_min.fit(sample, floc = 0)
+    return alpha, beta 
 
 def median_ranks_regression(
     sample: np.array, method: MRREstimationMethod = "beta"
@@ -61,7 +70,8 @@ def median_ranks_regression(
     elif method == "roots":
         raise NotImplementedError("`roots` Median Rank Computation not implemented")
     elif method == "bernard":
-        raise NotImplementedError("`bernard` Median Rank Computation not implemented")
+        j = np.arange(1, n + 1)
+        median_ranks = (j - .3)/(n + .4)
     else:
         raise ValueError(f"Uknown computation method: {method}")
 
@@ -81,7 +91,13 @@ def median_ranks_regression(
 if __name__ == "__main__":
     seed = 1234
     rng = np.random.default_rng(seed)
+    
+    alpha, beta = 2.0, 0.8
 
-    sample = WeibullDistribution(alpha=2.0, beta=0.8, rng=rng).sample(1000)
-
-    print(median_ranks_regression(sample))
+    print("Generating a Weibull Sample with alpha = {alpha} beta = {beta}")
+    sample = WeibullDistribution(alpha=alpha, beta=beta, rng=rng).sample(1000)
+    
+    print("Estimation Results:")
+    print(f"MRR - beta: \t{median_ranks_regression(sample)}")
+    print(f"MRR - bernard: \t{median_ranks_regression(sample, method="bernard")}")
+    print(f"MLE: \t\t {mle_estimator(sample)}")
