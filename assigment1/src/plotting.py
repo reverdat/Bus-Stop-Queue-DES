@@ -89,6 +89,30 @@ def plot_grid_weibull(sample_grid: Dict[Tuple, np.ndarray], save_plot: bool = Tr
         plt.show()
 
 
+"""
+TODO:
+Alguns dels plots que caldria fer per presentar resultats:
+
+    ## A nivell local de la simulació
+
+    1. Figura amb dos plots en dues columnes: una per alpha i l'altre per beta.
+    En cada plot, scatterplot dels `estimates` de `simulation.ParameterEstimate`,
+    amb línia vertical corresponent amb la mitja $\bar{\theta}$, línia vertical 
+    amb el valor real $\theta$ i dues línies simètriques al voltant de 
+    $\bar{\theta}$ corresponent al l'interval de confiança al 95% 
+    obtingut al fer $\bar{\theta} \pm 1.96 \text{EmpSE}$. 
+    Posar el sample size, mètode de inferència com a subtitol.
+
+    Potser extendre això a múltiples rows per factors variants (n o alpha i beta).
+
+    ## A nivell global, múltiples simulacions com a comparació dels dos mètodes
+
+    1. Veure Figura 1 del paper de simulation studies, corbes de bias, empse i
+    mse com a funció del sample size per cadascun dels mètodes.
+
+"""
+
+
 if __name__ == "__main__":
     seed = 1234
     # Create a single generator to share in all distribution objects
