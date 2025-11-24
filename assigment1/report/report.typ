@@ -3,7 +3,7 @@
 #set page(
     header: context{
         if counter(page).get().first() > 1 [
-            _Pau Soler - GDMS_ 
+            _Arnau Pérez, Pau Soler - GDMS_ 
             #h(1fr)
             SCA, UPC
         ]
@@ -39,24 +39,52 @@
 
 #lorem(50)
 
-= Aims (Objectius)
+= Objectiu (Aims)
 
-= Data-generating mechanisms (mechanismes de generació de dades)
+Determinar l'efectivitat del mètode MRR (Median Ranks Regression) per a estimar els paràmetres d'una distribució Weibull.
 
-Mètode de la funió inversa amb la weibull (simulaició des d'un model paramètric)
+A més a més el comparem amb el valor obtingut pel mètode de referència, estimació amb MLE.
+
+
+= Generació de Dades (Data-generating mechanisms)
+
+Simulació: Utilitzem el mètode de la funció inversa vist a les classes per generar les dades amb els valors $alpha, beta$ que volguem des del seu model paramètric.
+
+TODO: explicar breument què és el mètode de la funció inversa per generar (copiar del que el pau té fet ja al report de generació de nombres aleatoris)
+
+Els factors que variarem seran els següents:
+
+$alpha in {1,2,3}, beta in {0.5, 1, 1.8}, n in {10, 50, 250}$.
+
+A més a més, farem un nombre de repeticions de cada simulació $m = n_("sim")=1000$ i les analitzarem adequadament. Escollim el valor de $m$ per garantir que l'error estàndard de montecarlo serà suficientment reduït.
+
 
 = Estimand
 
-Volem estimar quina és la probabilitat de que es trenquin les molles segons els valors d'$alpha$ i $beta$ d'una weibull
+Volem estimar els valors d'$alpha, beta$ de la weibull empiricament, donades les dades que hem generat per simulació.
+
+Per a cada combinació dels paràmetres $(n, alpha, beta)$ generarem $m$ repetitions independents. Per a cadascuna d'aquestes, calcularem els estimadors d'$alpha, beta$ tan amb el mètode MLE ($hat(alpha_(MLE)), hat(beta_(MLE))$) i amb el MLE ($hat(alpha_(MLE)), hat(beta_(MLE))$) obtenint una distribució empírica dels estimadors per ananlitzar-ne les mètriques llistades a l'apartat dels resultats.
+
 
 = Performance Mesures
 
-Aquí ja estic una miqueta perdut xd
+Les mesures que utilitizarem seran:
+1. Biaix:  $"Biaix" = frac(1,m) sum_(i=1)^m (hat(theta)_i - theta)$
+2. Error estàndard de montecarlo (MCSE): $"MSCE"("Biaix") = sqrt(frac(1, m(m-1)) sum_(i=1)^m hat(theta)_i  -macron(hat(theta)))$
+3. MSE: $frac(1, m) (hat(theta)_i - theta)^2$
+
+Per a comprarar-lo amb l'MLE, calcularem les mètriques anteriors també per l'MLE i les contrastarem amb les del MRR.
+
 
 = Results
 
-Som els putos amos i ha anat tot molt bé un petó per nosaltres.
+Gràfiques: per a cada tamany mostral, posem les gràfiques que estan a `plotting.py`:
+Taules de resultats:
+TODO: La taula hauria de ser
+1. files: n 
+2. Columnes: Biax, MCSE MSE de MRR i després de MLE
+3. Hi haurà 9 taules, una per cada valor diferent de alpha beta.
 
 = Annex
 
-Posar tots els codis a lo copia i enganxa, potser explicant de què va. Sobretot jo el que posaria és quelcom estil "final script" on es facin els imports de tot el que necessitem i tota la pesca. on es facin els imports de tot el que necessitem i tota la pesca.
+Posar totes les classes a lo copia i enganxa. Més enllà, fer ènfasi al main, i fer un esforç en que imprimieixi els mateixos results exactes que es presenten al report. (EG la taula, s'ha de trobar com fer-ho)
