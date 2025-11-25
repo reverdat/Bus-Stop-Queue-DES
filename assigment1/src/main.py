@@ -5,125 +5,78 @@ Runs the whole study in order to pick the best
 alpha and beta values for our use case
 """
 import numpy as np
-from simulation import SimulationComparison
+from simulation import SimulationComparison, ParameterEstimate
 import pandas as pd
 from typing import List, Any
 
-# d'aquí cap a sota està gpt'd, no refiar-se'n
-def save_simulation_results(
-    all_data: List[tuple], 
-    filename_metrics="simulation_metrics.csv", 
-    filename_comparisons="simulation_comparisons.csv"
-):
-    """
-    Parses a list of (sim_params, sim_output) and saves to CSVs.
-    """
-    metrics_records = []
-    comparison_records = []
+from dataclasses import asdict
+from pprint import pprint
 
-    for params, output in all_data:
-        # Unpack simulation parameters
-        sim_alpha, sim_beta, n = params
-
-        # Normalization: Handle the different return types of .simulate()
-        sim_results = []
-        comp_metrics = None
-
-        if hasattr(output, 'id'): 
-            # Case 1: Single Estimation Method (Returns just SimulationResult)
-            sim_results = [output]
-        elif isinstance(output, tuple):
-            # Case 2: Multiple Methods (Returns (List[SimulationResult], ComparisonMetrics))
-            sim_results, comp_metrics = output
-        else:
-            print(f"Warning: Unknown output type for params {params}")
-            continue
-
-        # --- 1. Process Absolute Metrics (Bias, MSE, etc.) ---
-        for res in sim_results:
-            method_name, method_algo = res.method
-            
-            # Extract Alpha and Beta estimates
-            for param_name in ['alpha', 'beta']:
-                est = getattr(res, param_name) # Get the ParameterEstimate object
-                
-                metrics_records.append({
-                    'sim_alpha': sim_alpha,
-                    'sim_beta': sim_beta,
-                    'n': n,
-                    'method_type': method_name,
-                    'method_algo': method_algo,
-                    'parameter': param_name,
-                    'bias': est.bias,
-                    'bias_mcse': est.bias_mcse,
-                    'empse': est.empse,
-                    'empse_mcse': est.empse_mcse,
-                    'mse': est.mse,
-                    'mse_mcse': est.mse_mcse
-                })
-
-        # --- 2. Process Comparison Metrics (Rel Increase) ---
-        if comp_metrics:
-            # comp_metrics is a list of tuples: [(alpha_metrics), (beta_metrics)]
-            # It compares sim_results[0] vs sim_results[1]
-            base_method = f"{sim_results[0].method[0]}_{sim_results[0].method[1]}"
-            comp_method = f"{sim_results[1].method[0]}_{sim_results[1].method[1]}"
-            
-            # Alpha Comparison (Index 0)
-            comparison_records.append({
-                'sim_alpha': sim_alpha, 'sim_beta': sim_beta, 'n': n,
-                'parameter': 'alpha',
-                'baseline': base_method, 'comparison': comp_method,
-                'rel_increase': comp_metrics[0][0],
-                'mcse_rel': comp_metrics[0][1]
-            })
-            
-            # Beta Comparison (Index 1)
-            comparison_records.append({
-                'sim_alpha': sim_alpha, 'sim_beta': sim_beta, 'n': n,
-                'parameter': 'beta',
-                'baseline': base_method, 'comparison': comp_method,
-                'rel_increase': comp_metrics[1][0],
-                'mcse_rel': comp_metrics[1][1]
-            })
-
-    # Save to CSV
-    df_metrics = pd.DataFrame(metrics_records)
-    df_metrics.to_csv(filename_metrics, index=False)
-    print(f"Saved metrics to {filename_metrics}")
-
-    if comparison_records:
-        df_comp = pd.DataFrame(comparison_records)
-        df_comp.to_csv(filename_comparisons, index=False)
-        print(f"Saved comparisons to {filename_comparisons}")
-
-# això ja està fet per mi
 def main():
     seed = 1234
     rng = np.random.default_rng(seed)
-
-    n_sims = 1000
+    
+    n_sims = 2  # Set to 1000 for final run [cite: 20]
     alphas = [1.0, 2.0, 3.0]
     betas = [1.5, 2.0, 2.5]
     sample_sizes = [10, 50, 100]
+    
+    scenarios = [(a, b) for a in alphas for b in betas]
 
-    all_simulation_data = []
+    final_tables = {}
 
-    for (alpha, beta, n) in [(a,b,n) for a in alphas for b in betas for n in sample_sizes]:
-        print(f"Testing alpha={alpha}, beta={beta}, n={n}...")
+    for alpha, beta in scenarios:
         
-        sim_output = SimulationComparison(
-            alpha=alpha, 
-            beta=beta, 
-            n=n, 
-            estimation_methods=[("mrr", "beta"), ("mrr", "bernard"), ("mle", "scipy")], 
-            n_sim=5, #ULL HO HE POSAT MÉS BAIX PER PROVAR 
-            rng=rng
-        ).simulate()
+        scenario_data = []
         
-        all_simulation_data.append(((alpha, beta, n), sim_output))
-
-    save_simulation_results(all_simulation_data)
+        for n in sample_sizes:
+            print(f"Alpha={alpha} Beta={beta} sample={n}")
+            sim_output = SimulationComparison(
+                alpha=alpha, 
+                beta=beta, 
+                n=n, 
+                estimation_methods=[("mrr", "beta"), ("mrr", "bernard"), ("mle", "scipy")], 
+                n_sim=n_sims, 
+                rng=rng
+            ).simulate()
+            
+            sim_results_all_methods, _ = sim_output
+            
+            for sim_result in sim_results_all_methods:
+                for param in ["alpha", "beta"]:
+                    value = getattr(sim_result, param)
+                    param_dict = asdict(value)
+                    
+                    del param_dict["estimates"]
+                    
+                    row = {
+                        'method_full': f"{sim_result.method[0].upper()} ({sim_result.method[1]})",
+                        'n': n,
+                        'parameter': param, 
+                        **param_dict 
+                    }
+                    scenario_data.append(row)
+        
+        df_scenario = pd.DataFrame(scenario_data)
+        
+        # Pivot: Rows=N, Cols=Parameter -> Metric -> Method
+        pivot_table = df_scenario.pivot_table(
+            index='n',
+            columns=['parameter', 'method_full'],
+            values=['bias', 'mse', 'empse_mcse'] # Add the metrics you want to see
+        )
+        
+        pivot_table.columns = pivot_table.columns.swaplevel(0, 1) 
+        pivot_table.sort_index(axis=1, level=0, inplace=True)
+        
+        key_name = f"A{alpha}_B{beta}".replace(".", "")
+        final_tables[key_name] = pivot_table
+        print(pivot_table)
+        
+        print("Written to results!")
+        pivot_table.to_csv(f"./results/sim-alpha{alpha}-beta{beta}.csv")
+        
+    
 
 if __name__ == "__main__":
     main()
