@@ -1,15 +1,17 @@
 """
-main.py
+## main.py
 
-Runs the whole study in order to pick the best 
-alpha and beta values for our use case
+This module orchestrates our code to 
+generate the results presented in our report,
+guaranteeing true reproducibility of  
+data and figures.
 """
+
 import numpy as np
 from simulation import SimulationComparison
 import pandas as pd
 from typing import List, Any
 
-# d'aquí cap a sota està gpt'd, no refiar-se'n
 def save_simulation_results(
     all_data: List[tuple], 
     filename_metrics="simulation_metrics.csv", 
@@ -117,7 +119,7 @@ def main():
             beta=beta, 
             n=n, 
             estimation_methods=[("mrr", "beta"), ("mrr", "bernard"), ("mle", "scipy")], 
-            n_sim=5, #ULL HO HE POSAT MÉS BAIX PER PROVAR 
+            n_sim=1000, #ULL HO HE POSAT MÉS BAIX PER PROVAR 
             rng=rng
         ).simulate()
         

@@ -1,6 +1,8 @@
 """
 ## simulation.py
 
+
+
 This module implements the `SimulationComparison` class,
 our high level abstraction to simulate a predefined
 number of times our data-generating process, and for each fix sample
@@ -44,14 +46,14 @@ class SimulationComparison:
         self.alpha = alpha
         self.beta = beta
         self.n = n
-        
+
         self._check_estimation_methods_format(estimation_methods)
         self.estimation_methods = estimation_methods
         self.n_sim = n_sim
         self.rng = rng
 
         self.weibull = WeibullDistribution(self.alpha, self.beta, self.rng)
-    
+
     def _check_estimation_methods_format(self, l: list):
         if not isinstance(l, list):
             raise TypeError("The estimation methods must be provided in a list.")
@@ -59,7 +61,7 @@ class SimulationComparison:
         for i, item in enumerate(l):
             if not isinstance(item, tuple):
                 raise TypeError(f"Item at index {i} is not a tuple: {item}")
-            
+
             if not all(isinstance(s, str) for s in item):
                 raise TypeError(f"Tuple at index {i} must contain only strings.")
 
@@ -118,12 +120,10 @@ class SimulationComparison:
         for i, estimation_method in enumerate(self.estimation_methods):
             alpha_estimates: List[np.float64] = []
             beta_estimates: List[np.float64] = []
-            
+
             method, algorithm = estimation_method
 
-            estimation_func = estimation_method_dispatcher(
-                estimation_method=method
-            )
+            estimation_func = estimation_method_dispatcher(estimation_method=method)
             for sample in samples:
                 alpha, beta = estimation_func(sample, method=algorithm)
                 alpha_estimates.append(alpha)
@@ -140,7 +140,7 @@ class SimulationComparison:
             )
             sim_results.append(
                 SimulationResult(
-                    id=i+1,
+                    id=i + 1,
                     method=estimation_method,
                     alpha=alpha_results,
                     beta=beta_results,
@@ -181,7 +181,12 @@ if __name__ == "__main__":
     rng = np.random.default_rng(seed)
 
     sim_1 = SimulationComparison(
-        alpha=2.0, beta=0.8, n=200, estimation_methods=[("mrr", "beta"), ("mrr", "bernard"), ("mle", "scipy")], n_sim=1000, rng=rng
+        alpha=2.0,
+        beta=0.8,
+        n=200,
+        estimation_methods=[("mrr", "beta"), ("mrr", "bernard"), ("mle", "scipy")],
+        n_sim=1000,
+        rng=rng,
     ).simulate()
 
     print(sim_1)
