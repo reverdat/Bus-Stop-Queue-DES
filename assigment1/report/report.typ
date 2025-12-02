@@ -139,6 +139,43 @@ Un dels focus d'aquest treball i especialment de l'assignatura és la garantia d
 En primer lloc, el mòdul `src/dgm.py` conté la classe `WeibullDistribution` la qual inicialitzada amb els paràmetres `alpha` i `beta` adequats encapsula una $"Weibull"(alpha, beta)$ de la qual es pot generar una mostra de mida $n$ mitjançant el mètode `sample(n: int)`, que implementa el mètode descrit a l'apartat anterior. La generació de nombres aleatoris ben definida la proporciona NumPy amb `np.random.default_rng(seed)`, que per darrera implementa l'algoritme de Mersenne-Twister proporcionada una llavor (`seed`). S'observa que, creat un objecte generador de nombres aleatoris de NumPy `rng`, la classe `WeibullDistribution` permet ser inicialitzada amb aquest generador especificament, de forma que si es canvia de paràmetres durant l'estudi de simulació, el fet de compartir el generador garanteix el control total sobre la seqüència de nombres que es van generant a cada punt del programa. 
 
 
+= Mètodes
+---
+== Mètode 1: Maximum Likelihood Estimation (MLE)
+
+**PENDENT**
+
+---
+== Mètode 2: Median Ranks Regression (MRR)
+
+El mètode de Median Ranks Regression (MRR) per a l'estimació dels paràmetres consisteix en tres passos:
+
+1. Donada la mostra d'observacions de temps de fallada $T_1, ..., T_n$, primer s'ordena la mostra en ordre creixent, obtenint així la mostra ordenada $T_(\(
+1\)),..., T_(\(n\))$
+
+1.  Calcula el rang medià $"MR"_j$ de cada fallada observada $T_j$ de la mostra amb distribució de Weibull mitjançant
+    $
+    0.50 = sum_(k=j)^N binom(N, k) "MR"_j^k (1 - "MR"_j)^(N-k)
+    $
+    i utilitza-lo com a estimació de la veritable no-fiabilitat: $Q(T_j) approx "MR"_j$. Aquesta equació es pot resoldre utilitzant algorismes de cerca d'arrels com el mètode de Newton.
+
+2.  Transforma les estimacions de no-fiabilitat mitjançant el mapeig
+    $
+    Q mapsto log(-log(1 - Q)).
+    $
+    De fet, s'observa que aquesta funció està ben definida, ja que $Q in (0,1)$ i $-log(1 - Q) > 0$. Aquesta funció transforma la fdp (cdf) de Weibull en una recta. En efecte,
+    $
+    F(x; alpha, beta) = 1 - exp(-(x/alpha)^beta)  \
+     F - 1 = -exp(-(x/alpha)^beta) \
+    -log(1 - F) = (x/alpha)^beta \
+    log(-log(1 - F)) = beta log(x) - beta log(alpha).
+    $
+
+3.  Amb la mostra de parells de temps de fallada i les seves estimacions de no-fiabilitat $(T_j, Q_j)$, utilitza Mínims Quadrats per ajustar una recta i extreure els coeficients resultants $m$ i $b$. Llavors, la inferència sobre els paràmetres del nostre model de Weibull es pot aconseguir mitjançant
+    $
+    m equiv beta \
+    b equiv -beta log(alpha) therefore alpha = exp(-b/beta).
+    $
 
 = Estimand
 
