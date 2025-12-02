@@ -27,10 +27,6 @@ def main():
     scenarios = [(a, b) for a in alphas for b in betas]
 
     final_tables = {}
-    parameters_resamples = {
-        "alpha": {},
-        "beta": {},
-    } # conté les mil resamples
 
     for alpha, beta in scenarios:
         
@@ -53,17 +49,14 @@ def main():
                 for param in ["alpha", "beta"]:
                     value = getattr(sim_result, param)
                     param_dict = asdict(value)
-                   
-                    if param == "alpha":
-                        parameters_resamples[param][alpha] = param_dict["estimates"]
-                    else param == "beta":
-                        parameters_resamples[param][beta] = param_dict["estimates"]
-
+                    
+                    del param_dict["estimates"]
+                    
                     row = {
                         'method_full': f"{sim_result.method[0].upper()} ({sim_result.method[1]})",
                         'n': n,
                         'parameter': param, 
-                        **param_dict
+                        **param_dict 
                     }
                     scenario_data.append(row)
         
@@ -79,18 +72,17 @@ def main():
         pivot_table.columns = pivot_table.columns.swaplevel(0, 1) 
         pivot_table.sort_index(axis=1, level=0, inplace=True)
         
-        key_name = f"alpha{alpha}_beta{beta}_N{n}".replace(".", "")
+        key_name = f"A{alpha}_B{beta}".replace(".", "")
         final_tables[key_name] = pivot_table
         print(pivot_table)
         
         print("Written to results!")
         pivot_table.to_csv(f"./results/sim-alpha{alpha}-beta{beta}.csv")
        
-        with open("tries.txt", 'w') as f:
-            json.dump(parameters_resamples, f)
+        # plotting generation
+    
 
 if __name__ == "__main__":
     main()
-    #draw_plots("path/to/results_file.csv")
 
 
