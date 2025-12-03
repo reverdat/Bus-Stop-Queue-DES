@@ -24,9 +24,10 @@ def main():
     rng = np.random.default_rng(seed)
 
     n_sims = 1000
+    # n_sims = 115
     alphas = [1.0, 2.0, 3.0]
-    betas = [1.5, 2.0, 2.5]
-    sample_sizes = [10, 50, 100]
+    betas = [0.5, 1.0, 3.0]
+    sample_sizes = [10, 50, 200]
 
     scenarios = [(a, b) for a in alphas for b in betas]
 
@@ -103,13 +104,13 @@ def main():
         key_name = f"A{alpha}_B{beta}".replace(".", "")
         final_tables[key_name] = pivot_table
 
-        pivot_table.to_csv(f"../results/summary-alpha{alpha}-beta{beta}.csv")
+        pivot_table.to_csv(f"../results/summary-alpha{alpha}-beta{beta}.csv",float_format='%.2e')
         print(f"Saved summary for A={alpha}, B={beta}")
 
         df_estimates_final = pd.concat(scenario_raw_estimates, ignore_index=True)
 
         df_estimates_final.to_csv(
-            f"../results/estimates-alpha{alpha}-beta{beta}.csv", index=False
+            f"../results/estimates-alpha{alpha}-beta{beta}.csv", index=False, float_format='%.2e',
         )
         print(f"Saved estimates for A={alpha}, B={beta}")
 
