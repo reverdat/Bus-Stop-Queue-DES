@@ -40,18 +40,23 @@
 
 = Introducció
 
-#lorem(50)
+Aquest document és la memòria de l'entrega avaluable de la primera part de l'assignatura _Simulació_ del màster MESIO, feta per Arnau Pérez Reverte i Pau Soler Valadés. El document segueix el procediment ADMEP (Aims, Data-Generation, Methods, Estimands, Performance) [TODO CITAR AIXÔ ARNAU] i contesta els punts proposats a l'enunciat de l'entrega. A diferencia d'un artícle acadèmic, en certs punts de la pràctica ens dediquem a explicar conceptes que s'haurien de donar per sabuts, però degut a la naturalesa avaluada de l'entrega, hem preferit explicar en el benentès de la màxima claredat.
+
+*Sobre l'ús d'Intel·ligència Artificial Generativa*: Els continguts d'aquesta memòria han estat íntegrament escrits per humans, els seus dos autors, així com tota la seva estructura i raonaments. Tanmateix, s'ha emprat la Intel·ligència Artifical Generativa (models PerplexiyAI [TODO CITAR ARNAU] i Google Gemini 3 [TODO CITAR ARNAU]) en la recerca de fonts, explicacions sobre conceptes i pel codi de les taules que apareixen en aquest document.
 
 = Objectiu (Aims)
 
-L'objectiu principal del següent estudi de simulació és l'estudi
-de la inferència dels paràmetres d'una distribució de Weibull mitjançant el mètode Median Ranks Regression (MRR). Amb aquesta finalitat, es desenvoluparà la teoria al voltant d'aquesta distribució de probabilitat, es definirà aquest procediment d'inferència en detall i s'avaluarà la qualitat del seus resultats mitjançant una sèrie de mètriques, així com es compararà amb el mètode ordinari de inferència del Maximum Likelihood Estimation (MLE).
+// NOTA: Arnau, em sap greu però encara no em convenç això haha, què et sembla aquest paràgraf! Tria-ho tu mateix, sorry <3
+//
+// L'objectiu de l'estudi de simualació és avaluar el mètode de Regressió per Rangs Medians (Median Rank Regression o MRR) per a estimar els paràmetres d'una distribució Weibull. Per a fer-ho, el compararem amb el mètode habitual que estima els paràmetres com a estimadors de màxima versemblança (Maximum Likelihood Estimator o MLE) i una estimació del mateix MRR mitjançant una sèrie de mètriques adequades. 
+L'objectiu principal del següent estudi de simulació és l'estudi de la inferència dels paràmetres d'una distribució de Weibull mitjançant el mètode de Regressió per Rangs Medians (Median Ranks Regression o MRR). Amb aquesta finalitat, es desenvoluparà la teoria al voltant d'aquesta distribució de probabilitat, es definirà aquest procediment d'inferència en detall i s'avaluarà la qualitat del seus resultats mitjançant una sèrie de mètriques, així com es compararà amb el mètode ordinari de inferència per estimadors de màxima versemblança (Maximum Likelihood Estimation o MLE).
 
-= Generació de Dades (Data-generating mechanisms)
+= Mecanismes de Generació de Dades (Data-Generating Mechanisms)
 
-El DGM defineix com s'utilitza el mostreig pseudoaleatori per crear dades. Aquest estudi contindrà exclusivament simulacions paramètriques de dades distribuïdes seguint una Weibull per a diferents configuracions dels paràmetres $(alpha, beta)$ per tal d'experimentar amb l'estimació en funció de la forma de la distribució, així com de la mida de la mostra.
+El DGM defineix com s'utilitza el mostreig pseudoaleatori per crear dades. Aquest estudi contindrà exclusivament simulacions paramètriques de dades distribuïdes seguint una Weibull per a diferents configuracions dels paràmetres d'escala $alpha$ i de forma $beta$ per tal de verificar que l'estimació s'adapta a la forma de la distribució, així com amb diferents mides de tamany mostral.
 
-Fixats valors de $n > 0$ i $alpha, beta >0$, es defineix que el DGM que es realitza en una única simulació consisteix en la generació d'una mostra  d'observacions $T_1, T_2, ..., T_n$ _i.i.d_, amb $T_i ~ "Weibull"(alpha, beta)$. Els factors a variar per l'experimentació del mètode a estudiar seran aleshores $(alpha, beta, n)$, on seguint l'enunciat de la pràctica es defineix la següent matriu de valors basats en tres nivells (_small_, _medium_, _large_):
+El mecanisme de generació de dades consisteix en, per a cada tamany mostral diferent $n$, generar una mostra $T_1,...,T_n$ _i.i.d_, on $T_i ~ "Weibull"(alpha, beta)$ per a totes les 9 parelles de valors possibles $(alpha, beta)$. La taula @tab-valors-param mostra els valors escollits per a les simulacions.
+
 
 #set table(
   fill: (x, y) =>
@@ -87,23 +92,24 @@ Fixats valors de $n > 0$ i $alpha, beta >0$, es defineix que el DGM que es reali
   
   kind: "table",
   
-  supplement:  "Figura",
-)
+  supplement:  "Taula",
+) <tab-valors-param>
 \
-Els valors proposats pels tres nivells de la mida de la mostra $n$ són valors estàndards
-dintre de la literatura. En el cas dels paràmetres $alpha, beta$, primer es definiran amb detall
-a continuació i aquesta proposta de valors quedarà aleshores justificada.
+
+
+Els valors proposats pels tres nivells de la mida de la mostra $n$ són valors estàndards en la literatura [TODO: EL PAU TÉ ELS ARTÍCLES]. En el cas dels paràmetres $alpha, beta$, primer es definiran amb detall a continuació i aquesta proposta de valors quedarà aleshores justificada.
 
 == La distribució de Weibull 
-Diem que una variable aleatòria contínua $X$ segueix una distribució de Weibull de paràmetres $alpha$ i $beta$, $X ~ "Weibull"(alpha, beta)$, si té funció de densitat de probabilitat (_pdf_)
+
+Diem que una variable aleatòria contínua $X$ segueix una distribució de Weibull de paràmetres $alpha$ i $beta$, $X ~ "Weibull"(alpha, beta)$, si té funció de densitat de probabilitat (pdf)
 
 $ f_X (x; alpha, beta) = (beta/alpha) (x/alpha)^(beta - 1) exp(-(x/alpha)^beta) bb(1)_({x > 0}), $
 
-on $alpha > 0$ i $beta > 0$ són els paràmetres scale i shape, respectivament. S'observa aleshores que la seva funció de distribució de probabilitat (_cdf_) pren la forma 
+on $alpha > 0$ i $beta > 0$ són els paràmetres d'escala (scale) i forma (shape) respectivament. S'observa aleshores que la seva funció de distribució de probabilitat (cdf) pren la forma 
 
 $ F_X (x) = 1 - exp(-(x/alpha)^beta). $
 
-La distribució de Weibull, amb els seu suport al nombres reals positius, resulta a la pràctica molt útil per modelitzar el concepte de "temps de vida" en contextos com control de qualitat, epidemiologia, entre d'altres. Els seus paràmetres a més a més es poden, en aquesta idea mateixa idea, caracteritzar i interpretar de la forma següent:
+La distribució de Weibull, amb els seu suport als nombres reals positius $RR^+$, és molt útil per modelitzar el concepte de "temps de vida" en contextos com control de qualitat, epidemiologia, o el cas de l'exemple de l'enunciat, temps fins a fallada en enginyeria, entre molts altres. Els seus paràmetres es poden, a més a més, caracteritzar i interpretar de la manera següent:
 
 - $alpha$ (Scale): També conegut com vida característica, pren unitats d'acord al context del problema, és a dir, ja sigui perque estem modelitzant segons, minuts, hores, cicles, etc.
 - $beta$ (Shape): En el nostre context, $beta$ és un paràmetre adimensional conegut com la proporció de fallada, i que modifica el comportament de la distrbució de Weibull de la següent forma en funció del tres casos:
@@ -111,14 +117,16 @@ La distribució de Weibull, amb els seu suport al nombres reals positius, result
   + *$beta = 1$:* Proporció de fallada constant. Simplifica la distribució de Weibull a una $"Exp"(1/alpha)$, simbolitzant que el temps de supervivència és aleatori i independent de temps transcorregut.
   + *$beta > 1$:* Proporció de fallada creixent. La probabilitat de mort creix a mesura que el temps incrementa. Representa unitats/individus que empitjoren amb el pas del temps.
 
-Com ja s'ha descrit, la distribució de Weibull s'utilitza en el context del temps i en conseqüència manté una relació molt estreta amb altres distribucions utilitzades amb aquesta mateixa idea. Es destaca, en particular:
+[TODO: POTSER POSAR UNES GRAFIQUITES SOBRE BETA?]
 
-  - $"Weibull"(alpha, 1) = "Exp"(1/alpha) $
-  - $ X ~ "Weibull"(sqrt(2)beta, 2) = "Rayleigh"(beta) $
+Com ja s'ha descrit, la distribució de Weibull s'utilitza en el contextos on les dades són temporals, i en conseqüència manté una relació molt estreta amb altres distribucions utilitzades amb aquesta mateixa finalitat. Es destaquen en particular les següents relacions:
+- $"Weibull"(alpha, 1) = "Exp"(1/alpha) $
+- $ X ~ "Weibull"(sqrt(2)beta, 2) = "Rayleigh"(beta) $
+
 
 == Mètode de generació de nombres aleatòries
 
-Per tal de simular valors de la distribució de Weibull, s'utilitzarà el mètode de distribució inversa. En efecte, el mètode empra la composició de dues funcions: la funció de densitat d'una distribució uniforme $U(0,1)$ juntament amb la inversa de la funció de probabilitat $F$ de la distribució que es vulgui generar. Una variable aleatòria $U ~ U(0,1)$ té la densitat $f_U$ següent:
+Per tal de simular valors de la distribució de Weibull, s'ha emprat el mètode de la distribució inversa; el mètode empra la composició de dues funcions: la funció de densitat d'una distribució uniforme $U(0,1)$ juntament amb la inversa de la funció de probabilitat $F$ de la distribució que es vulgui generar. Una variable aleatòria $U ~ U(0,1)$ té la densitat $f_U$ següent:
 
 $ f_U (x) = bb(1)_{0 <= x <= 1} (x) $
 
@@ -128,9 +136,9 @@ $ F^(-1)_X compose f_U ~ X $
 
 $ F^(-1)_X compose f_U: RR attach(arrow.r.long.bar, t: f_U) [0,1] attach(arrow.r.long.bar, t: F^(-1)_X) RR $
 
-No només és possible, sinó que és una _cdf_ de la variable $X$. Això és possible ja que $U$ genera els nombres uniformement entre l'interval $[0,1]$, fent que la imatge de la composició es comporti com la distribució de la variable aleatòria caldria esperar. 
+no només és possible, sinó que és una CDF de la variable $X$. Això és possible ja que $U$ genera els nombres uniformement entre l'interval $[0,1]$, fent que la imatge de la composició es comporti com la distribució de la variable aleatòria que es vol generar. 
 
-En el cas de la distribució de Weibull, és fàcil veure que la funció inversa de la _cdf_ està ben definida per $u in (0,1]$ i pren la forma:
+En el cas de la distribució de Weibull, és fàcil veure que la funció inversa de la CDF està ben definida per $u in [0,1]$ i té la forma:
 
 $
   F_(X)^(-1)(u) = alpha (-log(u))^(1/beta).
@@ -145,12 +153,35 @@ En primer lloc, el mòdul `src/dgm.py` conté la classe `WeibullDistribution` la
 
 
 = Mètodes
-*TODO*
-== Mètode 1: Maximum Likelihood Estimation (MLE)
 
-*TODO*
+Aquest apartat descriu teòricament el mètodes avaluats en aquest estudi, que són estimació dels paràmtres per MLE, per MRR i l'aproximació de Betrand de l'MRR.
 
-== Mètode 2: Median Ranks Regression (MRR)
+== Estimadors de Màxima Versemblança (MLE)
+
+L'estimació mitjançant MLE és el mètode tradicional per l'estimació de paràmetres. Consiteix a trobar l'estimador de màxima versemblança, que no és més que
+
+$ hat(theta)_"ML" = "argmax"_(theta in Theta) L(theta|bold(x)) $
+
+On $L(theta|bold(x))$ és la funció de versemblança associada a la mostra $bold(x)$. Pel cas de la Weibull, aquesta pren la forma següent:
+
+$ L(alpha, beta|bold(x)) = product_(i=1)^n f(x_i|alpha, beta) = product_(i=1)^n [frac(alpha, beta) (frac(x_i, beta))^(alpha - 1) e^(-(x_i / beta)^alpha)] $
+
+Com que $ln$ és una funció monòtona creixent, és equivalent minitmizar $ell(alpha, beta) = ln L(alpha, beta)$ sent els càlculs molt més senzills:
+
+$ ell(alpha, beta) &= sum_(i=1)^n [ln alpha - ln beta + (alpha - 1)(ln x_i - ln beta) - (frac(x_i, beta))^alpha] \
+&= n ln alpha - n ln beta + (alpha - 1) sum_(i=1)^n ln x_i - n(alpha - 1) ln beta - sum_(i=1)^n (frac(x_i, beta))^alpha \
+&= n ln alpha - n alpha ln beta + (alpha - 1) sum_(i=1)^n ln x_i - beta^(-alpha) sum_(i=1)^n x_i^alpha $
+
+Ara hem d'obtenir les derivades $frac(partial ell, partial beta)$ $frac(partial ell, partial alpha)$ per a trobar el màxim de la funció. Aquest càlcul és feixuc i no contribueix als resultats que es volen ensenyar, així que es deixa a l'Annex 1. Els valors de les expressions són:
+
+
+$ frac(partial ell, partial alpha) = frac(1, hat(alpha)) + frac(1, n) sum_(i=1)^n ln x_i - frac(sum_(i=1)^n x_i^hat(alpha) ln x_i, sum_(i=1)^n x_i^hat(alpha)) = 0 $
+
+$ frac(partial ell, partial beta) = hat(beta) = (frac(1, n) sum_(i=1)^n x_i^hat(alpha))^(1 / hat(alpha)) $
+
+Per tant, trobant el mínim del paràmetre $alpha$ trobem el de $beta$. El paràmetre s'acostuma a trobar computacionalment amb mètode de Newton-Rhapson. En el cas del nostre codi, emprem la llibreria `scipy` per a obtenir els estimadors mitjançant MLE.
+
+== Regressió per Rangs a la Mediana (MRR)
 
 El mètode de Median Ranks Regression (MRR) per a l'estimació dels paràmetres consisteix en tres passos:
 
@@ -222,10 +253,12 @@ Els diferents mètodes d'estimació descrits prèviament s'implementen com a fun
 
 Volem estimar els valors d'$alpha, beta$ de la weibull empiricament, donades les dades que hem generat per simulació.
 
-Per a cada combinació dels paràmetres $(n, alpha, beta)$ generarem $m$ repetitions independents. Per a cadascuna d'aquestes, calcularem els estimadors d'$alpha, beta$ tan amb el mètode MLE ($hat(alpha_("MLE")), hat(beta_("MLE"))$) i amb el MLE ($hat(alpha_("MLE")), hat(beta_("MLE"))$) obtenint una distribució empírica dels estimadors per ananlitzar-ne les mètriques llistades a l'apartat dels resultats.
+Per a cada combinació dels paràmetres $(n, alpha, beta)$ generarem $m=1000$ repetitions independents. Per a cadascuna d'aquestes, calcularem els estimadors d'$alpha, beta$ per a els tres mètodes que estem avaluant: MLE ($hat(alpha)_("ML"), hat(beta)_"ML"$), MRR ($hat(alpha)_("MRR"), hat(beta)_"MRR"$)  i l'aproximació de Bertrand de MRR ($hat(alpha)_("B"), hat(beta)_"B"$).
+
+Un cop trobats tots els estimands, utilitzarem les mesures de l'apartat següent per inferir-ne la qualitat.
 
 
-= Performance Mesures
+= Rendiment (Performance Mesures)
 
 Les mesures que utilitizarem seran:
 1. Biaix:  $"Biaix" = frac(1,m) sum_(i=1)^m (hat(theta)_i - theta)$
@@ -242,17 +275,49 @@ Resultats: he agrupat en csv per alpha beta. Cadascun conté 3 files, una per a 
 2. Columnes: Biax, MCSE MSE de MRR i després de MLE
 3. Hi haurà 9 taules, una per cada valor diferent de alpha beta.
 
-Grafiques (sempre per parella alpha-beta encara que no es digui el contari):
-+ Primera: MSE per alpha beta (y-axis) i tipus (x-axis) MLE MRR Bertanrd i MRR normal code. Amb MCSE.
-+ Grafic de linies mse-bias. x: mse, y: bias. tres punts, un per sample size, tres linies, una per mètode.
-+ Gràfic de linies. y-axis: mse; x-axis sample-size.
+= Annex 1 
 
-Grafiques sobre bootstrap:
-+ boxplot: alph
-Les gràfiques mínimes han de ser la regressió lineal amb els mínims quadrats per ajustar una recta.
-Gràfiques: per a cada tamany mostral, posem les gràfiques que estan a `plotting.py`:
-Taules de resultats:
+Derivada respecte $beta$:
 
+$ frac(partial ell, partial beta) = -frac(n alpha, beta) - (sum_(i=1)^n x_i^alpha) (frac(partial, partial beta) beta^(-alpha)) $
+$ frac(partial ell, partial beta) = -frac(n alpha, beta) - (sum_(i=1)^n x_i^alpha) (-alpha beta^(-alpha - 1)) $
+$ -frac(n alpha, beta) + alpha beta^(-alpha - 1) sum_(i=1)^n x_i^alpha = 0 $
+
+Multipliquem per $beta / alpha$ ($alpha, beta != 0$):
+$ -n + beta^(-alpha) sum_(i=1)^n x_i^alpha = 0 $
+$ beta^alpha = frac(1, n) sum_(i=1)^n x_i^alpha $
+
+Aïllant $beta$, obtenim $hat(beta)$ com una funció respecte $hat(alpha)$:
+
+$ hat(beta) = (frac(1, n) sum_(i=1)^n x_i^hat(alpha))^(1 / hat(alpha)) $
+
+Derivada parcial respecte $alpha$:
+
+$ frac(partial ell, partial alpha) = frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n frac(partial, partial alpha) (frac(x_i, beta))^alpha $
+
+Si en adonem que $frac(partial, partial alpha) z^alpha = z^alpha ln z$, podem posar $z_i = x_i / beta$:
+
+$ frac(partial ell, partial alpha) = frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha ln(frac(x_i, beta)) = 0 $
+
+Substituïnt $ln(x_i / beta) = ln x_i - ln beta$:
+
+$ frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha (ln x_i - ln beta) = 0 $
+
+Usant l'expressió de $beta$, sabem que $sum (x_i / beta)^alpha = n$. I ho expandim a l'últim terme:
+
+$ frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha ln x_i + ln beta underbrace(sum_(i=1)^n (frac(x_i, beta))^alpha, = n) = 0 $
+
+
+$ frac(n, alpha) + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha ln x_i = 0 $
+
+Substituïm $beta^alpha = frac(1, n) sum x_i^alpha$ a l'equació i dividim per $n$
+
+$ frac(n, alpha) + sum_(i=1)^n ln x_i - frac(sum_(i=1)^n x_i^alpha ln x_i, frac(1, n) sum_(i=1)^n x_i^alpha) = 0 $
+
+
+$ frac(1, hat(alpha)) + frac(1, n) sum_(i=1)^n ln x_i - frac(sum_(i=1)^n x_i^hat(alpha) ln x_i, sum_(i=1)^n x_i^hat(alpha)) = 0 $
+
+Obtenint l'equació que hem de minimitzar.
 
 = Annex
 
