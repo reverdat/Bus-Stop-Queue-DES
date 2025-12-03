@@ -258,14 +258,44 @@ Per a cada combinació dels paràmetres $(n, alpha, beta)$ generarem $m=1000$ re
 Un cop trobats tots els estimands, utilitzarem les mesures de l'apartat següent per inferir-ne la qualitat.
 
 
-= Rendiment (Performance Mesures)
+= Avaluació del Rendiment
 
-Les mesures que utilitizarem seran:
-1. Biaix:  $"Biaix" = frac(1,m) sum_(i=1)^m (hat(theta)_i - theta)$
-2. Error estàndard de montecarlo (MCSE): $"MSCE"("Biaix") = sqrt(frac(1, m(m-1)) sum_(i=1)^m hat(theta)_i  -macron(hat(theta)))$
-3. MSE: $frac(1, m) (hat(theta)_i - theta)^2$
+Per tal d'avaluar el mètode de Regressió per Rangs de Mediana (MRR), realitzarem una comparativa directa amb l'Estimació de Màxima Versemblança (MLE). Aquesta avaluació es durà a terme mitjançant una simulació de Monte Carlo amb $m$ iteracions.
 
-Per a comprarar-lo amb l'MLE, calcularem les mètriques anteriors també per l'MLE i les contrastarem amb les del MRR.
+En aquest context, denotem $theta$ com el valor real del paràmetre i $hat(theta)_i$ com el valor estimat en la $i$-èssima iteració. Les mètriques de rendiment seleccionades per a l'anàlisi es presenten a la taula següent:
+
+#figure(
+  table(
+    columns: (1fr, 1fr, 1fr),
+    inset: 10pt,
+    align: (col, row) => (left + horizon, center + horizon, left + horizon).at(col),
+    fill: (col, row) => if row == 0 { luma(240) } else { none },
+    stroke: (x, y) => (
+      top: if y == 1 { 1pt } else { 0pt },
+      bottom: 1pt + luma(200),
+    ),
+    
+    [*Mètrica*], [*Fórmula*], [*Descripció*],
+
+    [Biaix \ (Bias)],
+    $ 1/m sum_(i=1)^m (hat(theta)_i - theta) $,
+    [Indica la distància mitjana entre l'esperança de l'estimador i el valor real.],
+
+    [Error Estàndard Empíric \ (ESE)],
+    $ sqrt(frac(1, m-1) sum_(i=1)^m (hat(theta)_i - macron(hat(theta)))^2) $,
+    [Mesura la variabilitat (desviació estàndard) de les estimacions al voltant de la seva mitjana.],
+
+    [Error Estàndard de Monte Carlo \ (MCSE)],
+    $ "ESE" / sqrt(m) $,
+    [Quantifica la incertesa de l'estimació deguda al nombre finit de simulacions ($m$).],
+
+    [Error Quadràtic Mitjà \ (MSE)],
+    $ 1/m sum_(i=1)^m (hat(theta)_i - theta)^2 $,
+    [Mesura global que combina la variància i el biaix ($"MSE" approx "ESE"^2 + "Biaix"^2$).]
+  ),
+  caption: [Resum de les mètriques de rendiment utilitzades per comparar els mètodes.],
+  supplement:  "Taula",
+) <tbl-metrics>
 
 
 = Results
@@ -275,6 +305,8 @@ Resultats: he agrupat en csv per alpha beta. Cadascun conté 3 files, una per a 
 2. Columnes: Biax, MCSE MSE de MRR i després de MLE
 3. Hi haurà 9 taules, una per cada valor diferent de alpha beta.
 
+
+#pagebreak()
 = Annex 1 
 
 Derivada respecte $beta$:
