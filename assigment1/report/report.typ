@@ -17,7 +17,7 @@
   title: [Estimació dels paràmetres de la distribució Weibull]
 )
 
-
+//#set math.equation(numbering: "1.")
 #set par(leading: 0.55em, spacing: 0.55em, first-line-indent: 1.8em, justify: true)
 #set heading(numbering: "1.")
 #show heading: set block(above: 1.4em, below: 1em)
@@ -232,7 +232,7 @@ Es guarda també la permutació $sigma: {1,..,n} -->  {1,..,n}$ tal que $sigma(T
 4.  Amb la mostra de parells de temps de fallada i les seves estimacions de no-fiabilitat $(T_(sigma^(-1)(j)), Q_j)$, s'utilitza Mínims Quadrats per ajustar una recta i extreure els coeficients resultants $m$ i $b$. Llavors, la inferència sobre els paràmetres del nostre model de Weibull es pot aconseguir mitjançant
     $
     m equiv beta \
-    b equiv -beta log(alpha) => alpha = exp(-b/beta).
+    b equiv -beta log(alpha) => alpha = exp(-b/beta). 
     $
 
 = Estimand
@@ -244,7 +244,7 @@ Per a cada combinació dels paràmetres $(n, alpha, beta)$ generarem $m=1000$ re
 Un cop trobats tots els estimands, utilitzarem les mesures de l'apartat següent per inferir-ne la qualitat.
 
 
-= Avaluació del Rendiment
+= Avaluació del Rendiment <performance>
 
 Per tal d'avaluar el mètode de Regressió per Rangs de Mediana (MRR), realitzarem una comparativa directa amb l'Estimació de Màxima Versemblança (MLE). Aquesta avaluació es durà a terme mitjançant una simulació de Monte Carlo amb $m$ iteracions.
 
@@ -253,7 +253,7 @@ En aquest context, denotem $theta$ com el valor real del paràmetre i $hat(theta
 
 #figure(
   table(
-    columns: (auto, auto, 1fr, 1fr),
+    columns: (auto, auto, auto, auto),
     inset: (x, y) => if x == 0 { 8pt } else { 10pt },
     align: (col, row) => (left, center, center, center).at(col) + horizon,
     fill: (col, row) => if row == 0 { luma(240) } else { none },
@@ -290,7 +290,15 @@ En aquest context, denotem $theta$ com el valor real del paràmetre i $hat(theta
 
 = Resultats
 
-Deguda a la quantitat de dades 
+Degut a la gran quantitat de permutacions $(alpha, beta, n)$ proposada per l'enunciat, tenim una gran quantitat d'estimadors a analitzar. Segons la literatura, en general aquests mètodes només avaluen per a diferents mides mostrals i valors de $beta$, que son els que condicionen la forma de la distributió i no la de l'escala. Avaluarem els resultats seguint aquesta aproximació, i només avaluarem les estimacions per $alpha=1$. Així i tot, es poden trobar totes les gràfiques corresponents a les altres valors a l'Annex 3.
+
+La @tbl-results-alpha10-beta05 conté totes les mètriques llistades a l'apartat d'anàlisi de rendiment @performance. La @fig-density-alpha10-beta05 representa la distribució dels estimands $(hat(alpha), hat(beta))$ segons el model al voltant del paràmetre original $(alpha, beta)$. Les figures @fig-comparison-alpha-alpha10-beta05 @fig-comparison-beta-alpha10-beta05 mostren el biax, l'error empíric i l'MSE pels parametres $alpha$ i $beta$ respectivament. Les figures @fig-estimates-MRR-alpha10-beta05, @fig-estimates-MRB-alpha10-beta05, @fig-estimates-MLE-alpha10-beta05 mostren segons el tamany mostral el valor de l'estimand i el seu intèrval de confiança. Totes aquestes son pels paràmetres indicats als peus o a les pròpies imatges.
+
+
+NOTA: Coses que passen sempre independentment dels valors
++ Hi ha una dependencia funcional entrea apha i beta a MRR. Per tant, sempre tenim menys varianca a les betes que a les alphes degut a la relació a les equaccions amb MRR.
+
+
 #figure(
   text(size: 9pt)[
     #table(
@@ -320,8 +328,46 @@ Deguda a la quantitat de dades
 [MRR (Beta)], [0.0185 (0.0049)], [0.1540 (0.0034)], [0.0241 (0.0012)], [-0.0094 (0.0011)], [0.0359 (0.0008)], [0.0014 (0.0001)]
     )
   ],
-  caption: [Resultats de la simulació per a $alpha=1.0, beta=0.5.$. Els valors es mostren com a Estimació (MCSE).]
+  caption: [Resultats de la simulació per a $alpha=1.0, beta=0.5$. Els valors es mostren com a Estimació (MCSE).]
 ) <tbl-results-alpha10-beta05>
+
+
+#figure(
+  image("figures/plots/density_comparison_alpha1.0_beta0.5.png", width: 80%),
+  caption: [Densitat bidimensional per $alpha=1, beta=0.5$],
+) <fig-density-alpha10-beta05>
+
+#figure(
+  image("figures/plots/metrics_comparison_alpha1.0_beta0.5_alpha.png", width: 80%),
+  caption: [Biax, EmpSE i MSE per $alpha=1.0$ amb $beta=0.5$],
+)<fig-comparison-alpha-alpha10-beta05>
+
+#figure(
+  image("figures/plots/metrics_comparison_alpha1.0_beta0.5_beta.png", width: 80%),
+  caption: [],
+)<fig-comparison-beta-alpha10-beta05>
+
+#figure(
+  image("figures/plots/estimates-plot-alpha1.0-beta0.5-MRR (beta).png"),
+  caption: ["Estimacions i Intervals de confiança del 95% amb MLE"], 
+)<fig-estimates-MRR-alpha10-beta05>
+
+#figure(
+  image("figures/plots/estimates-plot-alpha1.0-beta0.5-MRR (bernard).png"),
+  caption: ["Estimacions i Intervals de confiança del 95% amb MLE"], 
+)<fig-estimates-MRB-alpha10-beta05>
+
+#figure(
+  image("figures/plots/estimates-plot-alpha1.0-beta0.5-MLE (scipy).png"),
+  caption: ["Estimacions i Intervals de confiança del 95% amb MLE"], 
+)<fig-estimates-MLE-alpha10-beta05>
+
+#figure(
+  image("figures/plots/density_comparison_alpha1.0_beta0.5.png", width: 80%),
+  caption: [Densitat bidimensional per $alpha=1, beta=1$],
+)
+
+
 
 
 #figure(
@@ -353,10 +399,38 @@ Deguda a la quantitat de dades
 [MRR (Beta)], [0.0094 (0.0025)], [0.0787 (0.0018)], [0.0063 (0.0003)], [-0.0157 (0.0023)], [0.0737 (0.0016)], [0.0057 (0.0002)]
     )
   ],
-  caption: [Resultats de la simulació per a $alpha=1.0, beta=1.0.$. Els valors es mostren com a Estimació (MCSE).]
+  caption: [Resultats de la simulació per a $alpha=1.0, beta=1.0$. Els valors es mostren com a Estimació (MCSE).]
 ) <tbl-results-alpha10-beta10>
 
+#figure(
+  image("figures/plots/density_comparison_alpha1.0_beta1.0.png", width: 80%),
+  caption: [Densitat bidimensional per $alpha=1, beta=1$],
+) <fig-density-alpha10-beta10>
 
+#figure(
+  image("figures/plots/metrics_comparison_alpha1.0_beta1.0_alpha.png", width: 80%),
+  caption: [Biax, EmpSE i MSE per $alpha=1.0$ amb $beta=1.0$],
+)<fig-comparison-alpha-alpha10-beta10>
+
+#figure(
+  image("figures/plots/metrics_comparison_alpha1.0_beta1.0_beta.png", width: 80%),
+  caption: [],
+)<fig-comparison-beta-alpha10-beta10>
+
+#figure(
+  image("figures/plots/estimates-plot-alpha1.0-beta1.0-MRR (beta).png"),
+  caption: ["Estimacions i Intervals de confiança del 95% amb MLE"], 
+)<fig-estimates-MRR-alpha10-beta10>
+
+#figure(
+  image("figures/plots/estimates-plot-alpha1.0-beta1.0-MRR (bernard).png"),
+  caption: ["Estimacions i Intervals de confiança del 95% amb MLE"], 
+)<fig-estimates-MRB-alpha10-beta10>
+
+#figure(
+  image("figures/plots/estimates-plot-alpha1.0-beta1.0-MLE (scipy).png"),
+  caption: ["Estimacions i Intervals de confiança del 95% amb MLE"], 
+)<fig-estimates-MLE-alpha10-beta10>
 #figure(
   text(size: 9pt)[
     #table(
@@ -386,13 +460,59 @@ Deguda a la quantitat de dades
 [MRR (Beta)], [0.0027 (0.0008)], [0.0263 (0.0006)], [0.0007 (0.0000)], [-0.0421 (0.0069)], [0.2200 (0.0049)], [0.0500 (0.0022)]
     )
   ],
-  caption: [Resultats de la simulació per a $alpha=1.0, beta=3.0.$. Els valors es mostren com a Estimació (MCSE).]
+  caption: [Resultats de la simulació per a $alpha=1.0, beta=3.0$. Els valors es mostren com a Estimació (MCSE).]
 ) <tbl-results-alpha10-beta30>
 
+#figure(
+  image("figures/plots/density_comparison_alpha1.0_beta3.0.png", width: 80%),
+  caption: [Densitat bidimensional per $alpha=1, beta=3$],
+) <fig-density-alpha10-beta30>
 
+#figure(
+  image("figures/plots/metrics_comparison_alpha1.0_beta3.0_alpha.png", width: 80%),
+  caption: [Biax, EmpSE i MSE per $alpha=1.0$ amb $beta=3.0$],
+)<fig-comparison-alpha-alpha10-beta30>
+
+#figure(
+  image("figures/plots/metrics_comparison_alpha1.0_beta3.0_beta.png", width: 80%),
+  caption: [],
+)<fig-comparison-beta-alpha10-beta30>
+
+#figure(
+  image("figures/plots/estimates-plot-alpha1.0-beta3.0-MRR (beta).png"),
+  caption: ["Estimacions i Intervals de confiança del 95% amb MLE"], 
+)<fig-estimates-MRR-alpha10-beta30>
+
+#figure(
+  image("figures/plots/estimates-plot-alpha1.0-beta3.0-MRR (bernard).png"),
+  caption: ["Estimacions i Intervals de confiança del 95% amb MLE"], 
+)<fig-estimates-MRB-alpha10-beta30>
+
+#figure(
+  image("figures/plots/estimates-plot-alpha1.0-beta3.0-MLE (scipy).png"),
+  caption: ["Estimacions i Intervals de confiança del 95% amb MLE"], 
+)<fig-estimates-MLE-alpha10-beta30>
 
 #bibliography("bibliography.bib", style: "ieee", title: "Bibliografia")
 
+
+== Tendències Generals
+
+Independentment dels valors específics d'$alpha$ i $beta$, s'observen certs comportaments sistemàtics:
+
+- *Biaix:* En general el biaix es redueix a mesura que augmenta el tamany de la mostra en tots els mètodes, amb l'MLE assolint el mínim en tots els casos quan $n=200$. Observem que això s'alinea amb l'optimalitat asimptòtica del MLE que afirma que aquest estimador és no-esbiaixat en el límit. Es destaca en particular que l'MRR presenta un biaix negatiu en l'estimació de $beta$.
+
+- *EmpSE (Variança):* Els valors de la variança són molt semblants independentment dels mètode escollit. En particular es pot observar que en el cas de l'MRR, la dependència funcional de $alpha$ a partir de l'estimació de $beta$, on aquesta es troba aplicada mitjançant una transformació monòtona de la seva inversa, provoca que la variança de $alpha$ sigui en general superior a la de $beta$, un fet que s'observa amb més detall als casos on el tamany de la mostra és petita i és visible tan el les gràfiques de comparació com en les gràfiques de densitat bidimensional.
+
+- *MSE*: Prenent com a mètrica de rendiment de referència l’MSE, que agrega les dues mètriques anteriors en una, es pot concloure que l’estimació dels paràmetres $alpha$ i $beta$ de la Weibull dona millors resultats amb el MLE que amb MRR per quasi totes les mètriques i quasi tots els valors dels paràmetres. Aquesta és una afirmació independent de la mida de la mostra, ja que aquest valor resulta quasi sempre inferior. De fet, en el cas de $beta$, l’MRR mostra sempre valors inferiors de l’MSE en el cas $n=10$; per $alpha$ però succeeix el contrari, i per tant, com la inferència d’ambdós paràmetres es fa a la vegada, no podem afirmar que l’MRR sigui millor en casos amb mostra petita.
+
+- *Equivalència de mètodes MRR:* Les diferències entre utilitzar l'aproximació de *Bernard* o la funció *Beta* exacta per al càlcul dels rangs medians són pràcticament inexistents a nivell numèric. Tanmateix, l'aproximació de Bernard només necessita 3 operacions per a calcular-se, mentre que els altres dos requereixen d'algoritmes d'optimització molt més costos en comparació amb quelcom tan simple com Bernard. El rati computació-resultats situa el mètode de Bernard com el millor per fer qualsevol exploració sense requerir molt temps ni potència de computació.
+
+
+== Conclusions
+
++ El millor mètode d'estimació dels paràmetres de la Weibull és *MLE*. Aquesta afirmació s'observa per a tots els paràmetres d'$alpha, beta$ i tots els tamanys mostrals, excepte en el cas $n=10, forall alpha, beta$. A més a més, és preferible a l'MRR per les seves propietats asimptòtiques, que es comencen a observar amb $n=200$.
++ Computacionalment parlant, ambdues versions de l'MRR guanyen valor com a alternatives molt poc costoses i realitzables fins i tot sense ordinador.
 
 
 #pagebreak()

@@ -356,7 +356,7 @@ def plot_2d_density(
             # Mark the True Value
             ax.axvline(alpha, color="red", linestyle="--", linewidth=1.5, alpha=0.6)
             ax.axhline(beta, color="red", linestyle="--", linewidth=1.5, alpha=0.6)
-            ax.plot(alpha, beta, 'ro', markersize=5, markeredgecolor="Black", zorder = 10, markeredgewidth=1.0, label='True Value')
+            ax.plot(alpha, beta, 'ro', markersize=4, markeredgecolor="Black", zorder = 10, markeredgewidth=1.0, label='True Value')
             
             # Enforce Global Limits
             ax.set_xlim(xlim)
