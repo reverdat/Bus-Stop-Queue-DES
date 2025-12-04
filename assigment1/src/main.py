@@ -39,7 +39,7 @@ def main():
     betas = [0.5, 1.0, 3.0]
     sample_sizes = [10, 50, 200]
 
-    run_simulation(alphas, betas, sample_sizes, n_sims, rng)
+    # run_simulation(alphas, betas, sample_sizes, n_sims, rng)
     generate_results_plots(f"{PROJECT_ROOT}/results")
     ## II. PLOTTING RESULTS
 
@@ -74,6 +74,8 @@ def generate_results_plots(results_dir: str):
             df_head = pd.read_csv(full_path, header=[0, 1, 2], nrows=0)
             # Level 1 contains method names (e.g., 'MLE (scipy)', 'MRR (beta)')
             methods_in_file = list(df_head.columns.levels[1].unique())
+
+            methods_in_file = [s for s in methods_in_file if s != "method_full"]
         except Exception as e:
             print(f"Skipping {filename}: {e}")
             continue
