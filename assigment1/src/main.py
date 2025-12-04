@@ -6,6 +6,7 @@ generate the results presented in our report,
 guaranteeing true reproducibility of
 data and figures.
 """
+
 from typing import List, Any
 from dataclasses import asdict
 import os
@@ -14,7 +15,7 @@ from pprint import pprint
 
 import numpy as np
 import pandas as pd
-from utils import REPO_ROOT, PROJECT_ROOT 
+from utils import REPO_ROOT, PROJECT_ROOT
 
 from simulation import SimulationComparison, ParameterEstimate
 import re
@@ -23,7 +24,7 @@ from plotting import plot_metrics_comparison, plot_2d_density, plot_estimates_me
 
 PROJECT_ROOT = f"{REPO_ROOT}/assigment1"
 
-# Check if results folder exists 
+# Check if results folder exists
 os.makedirs(f"{PROJECT_ROOT}/results", exist_ok=True)
 os.makedirs(f"{PROJECT_ROOT}/plots", exist_ok=True)
 
@@ -38,9 +39,10 @@ def main():
     betas = [0.5, 1.0, 3.0]
     sample_sizes = [10, 50, 200]
 
-    # run_simulation(alphas, betas, sample_sizes)
+    run_simulation(alphas, betas, sample_sizes, n_sims, rng)
     generate_results_plots(f"{PROJECT_ROOT}/results")
     ## II. PLOTTING RESULTS
+
 
 def generate_results_plots(results_dir: str):
     """
@@ -50,9 +52,9 @@ def generate_results_plots(results_dir: str):
 
     # Regex to identify summary files and extract parameters
     pattern = re.compile(r"summary-alpha([\d\.]+)-beta([\d\.]+)\.csv")
-    
+
     files = [f for f in os.listdir(results_dir) if pattern.match(f)]
-    
+
     if not files:
         print(f"No summary files found in {results_dir}")
         return
@@ -63,9 +65,9 @@ def generate_results_plots(results_dir: str):
         match = pattern.match(filename)
         alpha_val = float(match.group(1))
         beta_val = float(match.group(2))
-        
+
         full_path = os.path.join(results_dir, filename)
-        
+
         # 1. Detect Methods from the CSV header
         try:
             # Read just the header to get method names
@@ -76,29 +78,37 @@ def generate_results_plots(results_dir: str):
             print(f"Skipping {filename}: {e}")
             continue
 
-        print(f"Processing alpha={alpha_val}, beta={beta_val} | Methods: {methods_in_file}")
+        print(
+            f"Processing alpha={alpha_val}, beta={beta_val} | Methods: {methods_in_file}"
+        )
 
         # --- Plot Type 1: Metrics Comparison (Bias, SE, RMSE) ---
         # Plot for Alpha
         plot_metrics_comparison(
-            alpha=alpha_val, beta=beta_val, methods=methods_in_file,
-            param_name="alpha", results_dir=results_dir
+            alpha=alpha_val,
+            beta=beta_val,
+            methods=methods_in_file,
+            param_name="alpha",
+            results_dir=results_dir,
         )
         # Plot for Beta
         plot_metrics_comparison(
-            alpha=alpha_val, beta=beta_val, methods=methods_in_file,
-            param_name="beta", results_dir=results_dir
+            alpha=alpha_val,
+            beta=beta_val,
+            methods=methods_in_file,
+            param_name="beta",
+            results_dir=results_dir,
         )
 
         # --- Plot Type 2: 2D Joint Density ---
-        # Note: This function uses its own hardcoded path inside plotting.py 
+        # Note: This function uses its own hardcoded path inside plotting.py
         # (usually {PROJECT_ROOT}/plots/...), so we just pass results_dir.
         try:
             plot_2d_density(
-                alpha=alpha_val, 
-                beta=beta_val, 
-                methods=methods_in_file, 
-                results_dir=results_dir
+                alpha=alpha_val,
+                beta=beta_val,
+                methods=methods_in_file,
+                results_dir=results_dir,
             )
         except Exception as e:
             print(f"Failed 2D density plot: {e}")
@@ -108,22 +118,21 @@ def generate_results_plots(results_dir: str):
         for method in methods_in_file:
             try:
                 plot_estimates_method(
-                    alpha=alpha_val, 
-                    beta=beta_val, 
-                    method=method, 
-                    results_dir=results_dir
+                    alpha=alpha_val,
+                    beta=beta_val,
+                    method=method,
+                    results_dir=results_dir,
                 )
             except Exception as e:
                 print(f"Failed estimates plot for {method}: {e}")
 
-    print("All plots generated successfully.")    
+    print("All plots generated successfully.")
 
 
-def run_simulation(alphas, beta, sample_sizes):
+def run_simulation(alphas, betas, n_sims, sample_sizes, rng):
     scenarios = [(a, b) for a in alphas for b in betas]
 
     final_tables = {}
-
 
     ###### I. SIMULATION
 
@@ -195,18 +204,19 @@ def run_simulation(alphas, beta, sample_sizes):
         key_name = f"A{alpha}_B{beta}".replace(".", "")
         final_tables[key_name] = pivot_table
 
-        pivot_table.to_csv(f"../results/summary-alpha{alpha}-beta{beta}.csv",float_format='%.2e')
+        pivot_table.to_csv(
+            f"../results/summary-alpha{alpha}-beta{beta}.csv", float_format="%.2e"
+        )
         print(f"Saved summary for A={alpha}, B={beta}")
 
         df_estimates_final = pd.concat(scenario_raw_estimates, ignore_index=True)
 
         df_estimates_final.to_csv(
-            f"../results/estimates-alpha{alpha}-beta{beta}.csv", index=False, float_format='%.2e',
+            f"../results/estimates-alpha{alpha}-beta{beta}.csv",
+            index=False,
+            float_format="%.2e",
         )
         print(f"Saved estimates for A={alpha}, B={beta}")
-
-
-
 
 
 if __name__ == "__main__":
