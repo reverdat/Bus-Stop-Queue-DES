@@ -40,9 +40,9 @@
 
 = Introducció
 
-Aquest document és la memòria de l'entrega avaluable de la primera part de l'assignatura _Simulació_ del màster MESIO, feta per Arnau Pérez Reverte i Pau Soler Valadés. El document segueix el procediment ADMEP (Aims, Data-Generation, Methods, Estimands, Performance) [TODO CITAR AIXÔ ARNAU] i contesta els punts proposats a l'enunciat de l'entrega. A diferencia d'un artícle acadèmic, en certs punts de la pràctica ens dediquem a explicar conceptes que s'haurien de donar per sabuts, però degut a la naturalesa avaluada de l'entrega, hem preferit explicar en el benentès de la màxima claredat; a l'annex 4 es troben els detalls de l'implementació i com hem garantit la màxima reproducibilitat.
+Aquest document és la memòria de l'entrega avaluable de la primera part de l'assignatura _Simulació_ del màster MESIO, feta per Arnau Pérez Reverte i Pau Soler Valadés. El document segueix el procediment ADMEP (Aims, Data-Generation, Methods, Estimands, Performance)  i contesta els punts proposats a l'enunciat de l'entrega. A diferencia d'un artícle acadèmic, en certs punts de la pràctica ens dediquem a explicar conceptes que s'haurien de donar per sabuts, però degut a la naturalesa avaluada de l'entrega, hem preferit explicar en el benentès de la màxima claredat; a l'annex 4 es troben els detalls de l'implementació i com hem garantit la màxima reproducibilitat.
 
-*Sobre l'ús d'Intel·ligència Artificial Generativa*: Els continguts d'aquesta memòria han estat íntegrament escrits per humans, els seus dos autors, així com tota la seva estructura i raonaments. Tanmateix, s'ha emprat la Intel·ligència Artifical Generativa (models PerplexiyAI [TODO CITAR ARNAU] i Google Gemini 3 [TODO CITAR ARNAU]) en la recerca de fonts, explicacions sobre conceptes i pel codi de les taules que apareixen en aquest document.
+*Sobre l'ús d'Intel·ligència Artificial Generativa*: Els continguts d'aquesta memòria han estat íntegrament escrits per humans, els seus dos autors, així com tota la seva estructura i raonaments. Tanmateix, s'ha emprat la Intel·ligència Artifical Generativa (model Google Gemini 3 @noauthor_google_nodate) en la recerca de fonts, explicacions sobre conceptes, el codi de les taules que apareixen en aquest document i els codis de matplotlib de les gràfiques.
 
 = Objectiu (Aims)
 
@@ -92,12 +92,12 @@ El mecanisme de generació de dades consisteix en, per a cada tamany mostral dif
   
   kind: "table",
   
-  supplement:  "Taula",
+  supplement:  "Table",
 ) <tab-valors-param>
 \
 
 
-Els valors proposats pels tres nivells de la mida de la mostra $n$ són valors estàndards en la literatura [TODO: EL PAU TÉ ELS ARTÍCLES]. En el cas dels paràmetres $alpha, beta$, primer es definiran amb detall a continuació i aquesta proposta de valors quedarà aleshores justificada.
+Els valors proposats pels tres nivells de la mida de la mostra $n$ són valors estàndards en la literatura @genschel_comparison_2010 @zhang_study_2007. En el cas dels paràmetres $alpha, beta$, primer es definiran amb detall a continuació i aquesta proposta de valors quedarà aleshores justificada.
 
 == La Distribució de Weibull 
 
@@ -117,7 +117,6 @@ La distribució de Weibull, amb els seu suport als nombres reals positius $RR^+$
   + *$beta = 1$:* Proporció de fallada constant. Simplifica la distribució de Weibull a una $"Exp"(1/alpha)$, simbolitzant que el temps de supervivència és aleatori i independent de temps transcorregut.
   + *$beta > 1$:* Proporció de fallada creixent. La probabilitat de mort creix a mesura que el temps incrementa. Representa unitats/individus que empitjoren amb el pas del temps.
 
-[TODO: POTSER POSAR UNES GRAFIQUITES SOBRE BETA?]
 
 Com ja s'ha descrit, la distribució de Weibull s'utilitza en el contextos on les dades són temporals, i en conseqüència manté una relació molt estreta amb altres distribucions utilitzades amb aquesta mateixa finalitat. Es destaquen en particular les següents relacions:
 - $"Weibull"(alpha, 1) = "Exp"(1/alpha) $
@@ -493,7 +492,6 @@ NOTA: Coses que passen sempre independentment dels valors
   caption: ["Estimacions i Intervals de confiança del 95% amb MLE"], 
 )<fig-estimates-MLE-alpha10-beta30>
 
-#bibliography("bibliography.bib", style: "ieee", title: "Bibliografia")
 
 
 == Tendències Generals
@@ -514,7 +512,8 @@ Independentment dels valors específics d'$alpha$ i $beta$, s'observen certs com
 + El millor mètode d'estimació dels paràmetres de la Weibull és *MLE*. Aquesta afirmació s'observa per a tots els paràmetres d'$alpha, beta$ i tots els tamanys mostrals, excepte en el cas $n=10, forall alpha, beta$. A més a més, és preferible a l'MRR per les seves propietats asimptòtiques, que es comencen a observar amb $n=200$.
 + Computacionalment parlant, ambdues versions de l'MRR guanyen valor com a alternatives molt poc costoses i realitzables fins i tot sense ordinador.
 
-
+#pagebreak()
+#bibliography("bibliography.bib", style: "ieee", title: "Bibliografia")
 #pagebreak()
 = Annex 1 
 
@@ -575,7 +574,7 @@ En primer lloc, el mòdul `src/dgm.py` conté la classe `WeibullDistribution` la
 Els diferents mètodes d'estimació descrits prèviament s'implementen com a funcions al mòdul 
 `src/inference.py`.
 1. *Median Ranks Regression (MRR)*: En el cas del MRR, la funció `median_ranks_regression` pren una mostra de simulació arbitrària i implementa el procediment explicat anteriorment. En particular, el paràmetre `method` permet escollir entre `"beta"` i `"bernard"`, per calcular els rangs medians utilitzan la forma explícita de la funció beta incompleta regularitzada (disponible per `from scipy.special import betaincinv`) o bé l'aproximació de Bernard. En ambdós casos s'utilitzen operacions matricials de NumPy, de forma que el procés és vectoritzat i per tant més ràpid. Finalment, els Mínims Quadrats es computen mitjançant `linregress` de `scipy.stats`.
-2. *Maximum Likelihood Estimation (MLE)*: *TODO*
+2. *Maximum Likelihood Estimation (MLE)*: Implementat per ScyPi, cercar el mètode `.fit()`
 
 Posar totes les classes a lo copia i enganxa. Més enllà, fer ènfasi al main, i fer un esforç en que imprimieixi els mateixos results exactes que es presenten al report. (EG la taula, s'ha de trobar com fer-ho)
 
