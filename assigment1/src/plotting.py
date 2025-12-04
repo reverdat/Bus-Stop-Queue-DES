@@ -262,8 +262,145 @@ def plot_estimates_method(
     print(f"Plot saved to {filename}")
     plt.close(fig)
 
-
 def plot_2d_density(
+    alpha: float,
+    beta: float,
+    methods: List[str],
+    results_dir: str = ".",
+    output_dir: str = "."
+):
+    """
+    Creates a grid of 2D Density plots (Kernel Density Estimation).
+    Rows: Sample Sizes (n)
+    Cols: Methods
+    Axes are fixed across all subplots for direct comparison of convergence.
+    """
+    # 1. Load Data
+    filename = f"estimates-alpha{alpha}-beta{beta}.csv"
+    path = os.path.join(results_dir, filename)
+    
+    if not os.path.exists(path):
+        print(f"Estimates file not found: {path}")
+        return
+        
+    df = pd.read_csv(path)
+    
+    # 2. Filter Methods and Map Names
+    available_methods = df['method_full'].unique()
+    selected_methods = []
+    
+    # Preserve order of user's 'methods' list
+    for user_method in methods:
+        match = next((m for m in available_methods if user_method.lower() in m.lower()), None)
+        if match and match not in selected_methods:
+            selected_methods.append(match)
+            
+    if not selected_methods:
+        print(f"No matching methods found in {filename}")
+        return
+
+    # Filter DataFrame
+    df = df[df['method_full'].isin(selected_methods)]
+    sample_sizes = sorted(df['n'].unique())
+
+    # 3. Calculate Global Axis Limits (Robust to outliers)
+    # We use 0.5% and 99.5% quantiles to define the view area, 
+    # preventing one extreme simulation from making the rest look tiny.
+    x_min, x_max = df['alpha_hat'].quantile([0.005, 0.995])
+    y_min, y_max = df['beta_hat'].quantile([0.005, 0.995])
+    
+    # Add a 10% breathing room
+    x_pad = (x_max - x_min) * 0.1
+    y_pad = (y_max - y_min) * 0.1
+    
+    xlim = (x_min - x_pad, x_max + x_pad)
+    ylim = (y_min - y_pad, y_max + y_pad)
+
+    # 4. Create Grid
+    n_rows = len(sample_sizes)
+    n_cols = len(selected_methods)
+    
+    # squeeze=False ensures axs is always a 2D array [row][col]
+    fig, axs = plt.subplots(
+        nrows=n_rows, 
+        ncols=n_cols, 
+        figsize=(4 * n_cols, 3.5 * n_rows),
+        sharex=True, 
+        sharey=True,
+        squeeze=False 
+    )
+
+    # 5. Plotting Loop
+    for r, n in enumerate(sample_sizes):
+        for c, method in enumerate(selected_methods):
+            ax = axs[r][c]
+            
+            # Subset data
+            data = df[(df['n'] == n) & (df['method_full'] == method)]
+            
+            if data.empty:
+                ax.text(0.5, 0.5, "No Data", ha='center', va='center')
+                continue
+
+            # Density Plot (KDE)
+            # fill=True creates the shaded contour
+            sns.kdeplot(
+                x=data['alpha_hat'], 
+                y=data['beta_hat'], 
+                ax=ax, 
+                fill=True, 
+                cmap="Blues", 
+                thresh=0.05, # Lowest iso-proportion level at which to draw a contour
+            )
+            
+            # Mark the True Value
+            ax.axvline(alpha, color="red", linestyle="--", linewidth=1.5, alpha=0.6)
+            ax.axhline(beta, color="red", linestyle="--", linewidth=1.5, alpha=0.6)
+            ax.plot(alpha, beta, 'ro', markersize=5, markeredgecolor="Black", zorder = 10, markeredgewidth=1.0, label='True Value')
+            
+            # Enforce Global Limits
+            ax.set_xlim(xlim)
+            ax.set_ylim(ylim)
+            
+            # Titles and Labels
+            if r == 0:
+                ax.set_title(method, fontsize=14, fontweight='bold', pad=10)
+            
+            if c == 0:
+                ax.set_ylabel(f"n = {n}\n\nEstimated $\\beta$", fontsize=12)
+            else:
+                ax.set_ylabel("")
+                
+            if r == n_rows - 1:
+                ax.set_xlabel("Estimated $\\alpha$", fontsize=12)
+            else:
+                ax.set_xlabel("")
+
+            # Grid
+            ax.grid(True, linestyle=':', alpha=0.6)
+
+    # Global Title
+    fig.suptitle(f"Joint Density of Estimates ($\\alpha$={alpha}, $\\beta$={beta})", fontsize=20, y=1.02)
+    
+    # Legend (only need one for the red star)
+    # We grab the handle from the first plot
+    handles, labels = axs[0][0].get_legend_handles_labels()
+    # Filter to only keep 'True Value'
+    by_label = dict(zip(labels, handles))
+    if 'True Value' in by_label:
+        fig.legend([by_label['True Value']], ['True Value'], loc='upper right', bbox_to_anchor=(0.95, 1.02), frameon=False)
+
+    # Save
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+        
+    filename = f"density_comparison_alpha{alpha}_beta{beta}.png"
+    filepath = os.path.join(output_dir, filename)
+    plt.savefig(filepath, dpi=300, bbox_inches="tight")
+    print(f"Plot saved to {filepath}")
+    plt.close(fig)
+
+def plot_2d_density_old(
     alpha: np.float64,
     beta: np.float64,
     methods: List[ImplementedEstimationMethods],
@@ -408,6 +545,8 @@ def plot_2d_density(
     print(f"Plot saved to {filename}")
     plt.close(fig)
 
+
+
 def plot_metrics_comparison(
     alpha: float,
     beta: float,
@@ -463,7 +602,7 @@ def plot_metrics_comparison(
     metrics_config = [
         ("bias", "Bias"),
         ("empse", "Empirical SE"),
-        ("rmse", "Root MSE"),
+        ("mse", "MSE"),
     ]
 
     # CHANGED: Use a high-contrast palette (Set1) to distinguish similar methods
@@ -478,9 +617,9 @@ def plot_metrics_comparison(
         for i, (user_label, full_method) in enumerate(selected_map.items()):
             try:
                 # CHANGED: Explicit calculation for RMSE from 'mse' column
-                if metric_key == "rmse":
+                if metric_key == "mse":
                     if 'mse' in sub_df[full_method]:
-                        data = np.sqrt(sub_df[full_method]['mse'])
+                        data = sub_df[full_method]['mse']
                     else:
                         print(f"MSE column missing for {full_method}")
                         continue

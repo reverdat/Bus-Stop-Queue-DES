@@ -101,7 +101,7 @@ def generate_results_plots(results_dir: str):
             param_name="beta",
             results_dir=results_dir,
         )
-
+        
         # --- Plot Type 2: 2D Joint Density ---
         # Note: This function uses its own hardcoded path inside plotting.py
         # (usually {PROJECT_ROOT}/plots/...), so we just pass results_dir.
@@ -111,6 +111,7 @@ def generate_results_plots(results_dir: str):
                 beta=beta_val,
                 methods=methods_in_file,
                 results_dir=results_dir,
+                output_dir=f"{PROJECT_ROOT}/plots"
             )
         except Exception as e:
             print(f"Failed 2D density plot: {e}")

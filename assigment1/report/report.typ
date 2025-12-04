@@ -144,13 +144,6 @@ $
   F_(X)^(-1)(u) = alpha (-log(u))^(1/beta).
 $
 
-== Implementació computacional
-La implementació de les simulacions es realitza en el marc del llenguatge de programació Python utilitzant principalment les llibreries de computació numèrica NumPy @harris2020array i SciPy @2020SciPy-NMeth , les quals proporcionen una API d'alt nivell fàcil d'utilitzar, amb implementacions numèriques eficients testejades per la comunitat. Els objectes numèrics que s'utilitzaran són principalment del tipus `np.array`, permetent operacions vectoritzades que acceleren la realització de simulacions.
-
-Un dels focus d'aquest treball i especialment de l'assignatura és la garantia de reproducibilitat d'un estudi de simulació, és a dir, desenvolupar el codi de la simulació de tal forma que qualsevol usuari interessat en reproduïr (de forma exacta) els fets presentats en aquesta memòria ho pugui fer sense cap inconvenient. Amb aquest fi, el codi annex a la memòria s'estructura fonamentalment en diferents blocs de codi.
-
-En primer lloc, el mòdul `src/dgm.py` conté la classe `WeibullDistribution` la qual inicialitzada amb els paràmetres `alpha` i `beta` adequats encapsula una $"Weibull"(alpha, beta)$ de la qual es pot generar una mostra de mida $n$ mitjançant el mètode `sample(n: int)`, que implementa el mètode descrit a l'apartat anterior. La generació de nombres aleatoris ben definida la proporciona NumPy amb `np.random.default_rng(seed)`, que per darrera implementa l'algoritme de Mersenne-Twister proporcionada una llavor (`seed`). S'observa que, creat un objecte generador de nombres aleatoris de NumPy `rng`, la classe `WeibullDistribution` permet ser inicialitzada amb aquest generador especificament, de forma que si es canvia de paràmetres durant l'estudi de simulació, el fet de compartir el generador garanteix el control total sobre la seqüència de nombres que es van generant a cada punt del programa. 
-
 
 = Mètodes
 
@@ -242,13 +235,6 @@ Es guarda també la permutació $sigma: {1,..,n} -->  {1,..,n}$ tal que $sigma(T
     b equiv -beta log(alpha) => alpha = exp(-b/beta).
     $
 
-== Implementació computacional
-
-Els diferents mètodes d'estimació descrits prèviament s'implementen com a funcions al mòdul 
-`src/inference.py`.
-1. *Median Ranks Regression (MRR)*: En el cas del MRR, la funció `median_ranks_regression` pren una mostra de simulació arbitrària i implementa el procediment explicat anteriorment. En particular, el paràmetre `method` permet escollir entre `"beta"` i `"bernard"`, per calcular els rangs medians utilitzan la forma explícita de la funció beta incompleta regularitzada (disponible per `from scipy.special import betaincinv`) o bé l'aproximació de Bernard. En ambdós casos s'utilitzen operacions matricials de NumPy, de forma que el procés és vectoritzat i per tant més ràpid. Finalment, els Mínims Quadrats es computen mitjançant `linregress` de `scipy.stats`.
-2. *Maximum Likelihood Estimation (MLE)*: *TODO*
-
 = Estimand
 
 Volem estimar els valors d'$alpha, beta$ de la weibull empiricament, donades les dades que hem generat per simulació.
@@ -304,6 +290,7 @@ En aquest context, denotem $theta$ com el valor real del paràmetre i $hat(theta
 
 = Resultats
 
+Deguda a la quantitat de dades 
 #figure(
   text(size: 9pt)[
     #table(
@@ -335,6 +322,8 @@ En aquest context, denotem $theta$ com el valor real del paràmetre i $hat(theta
   ],
   caption: [Resultats de la simulació per a $alpha=1.0, beta=0.5.$. Els valors es mostren com a Estimació (MCSE).]
 ) <tbl-results-alpha10-beta05>
+
+
 #figure(
   text(size: 9pt)[
     #table(
@@ -366,6 +355,8 @@ En aquest context, denotem $theta$ com el valor real del paràmetre i $hat(theta
   ],
   caption: [Resultats de la simulació per a $alpha=1.0, beta=1.0.$. Els valors es mostren com a Estimació (MCSE).]
 ) <tbl-results-alpha10-beta10>
+
+
 #figure(
   text(size: 9pt)[
     #table(
@@ -397,6 +388,80 @@ En aquest context, denotem $theta$ com el valor real del paràmetre i $hat(theta
   ],
   caption: [Resultats de la simulació per a $alpha=1.0, beta=3.0.$. Els valors es mostren com a Estimació (MCSE).]
 ) <tbl-results-alpha10-beta30>
+
+
+
+#bibliography("bibliography.bib", style: "ieee", title: "Bibliografia")
+
+
+
+#pagebreak()
+= Annex 1 
+
+Derivada respecte $beta$:
+
+$ frac(partial ell, partial beta) = -frac(n alpha, beta) - (sum_(i=1)^n x_i^alpha) (frac(partial, partial beta) beta^(-alpha)) $
+$ frac(partial ell, partial beta) = -frac(n alpha, beta) - (sum_(i=1)^n x_i^alpha) (-alpha beta^(-alpha - 1)) $
+$ -frac(n alpha, beta) + alpha beta^(-alpha - 1) sum_(i=1)^n x_i^alpha = 0 $
+
+Multipliquem per $beta / alpha$ ($alpha, beta != 0$):
+$ -n + beta^(-alpha) sum_(i=1)^n x_i^alpha = 0 $
+$ beta^alpha = frac(1, n) sum_(i=1)^n x_i^alpha $
+
+Aïllant $beta$, obtenim $hat(beta)$ com una funció respecte $hat(alpha)$:
+
+$ hat(beta) = (frac(1, n) sum_(i=1)^n x_i^hat(alpha))^(1 / hat(alpha)) $
+
+Derivada parcial respecte $alpha$:
+
+$ frac(partial ell, partial alpha) = frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n frac(partial, partial alpha) (frac(x_i, beta))^alpha $
+
+Si en adonem que $frac(partial, partial alpha) z^alpha = z^alpha ln z$, podem posar $z_i = x_i / beta$:
+
+$ frac(partial ell, partial alpha) = frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha ln(frac(x_i, beta)) = 0 $
+
+Substituïnt $ln(x_i / beta) = ln x_i - ln beta$:
+
+$ frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha (ln x_i - ln beta) = 0 $
+
+Usant l'expressió de $beta$, sabem que $sum (x_i / beta)^alpha = n$. I ho expandim a l'últim terme:
+
+$ frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha ln x_i + ln beta underbrace(sum_(i=1)^n (frac(x_i, beta))^alpha, = n) = 0 $
+
+
+$ frac(n, alpha) + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha ln x_i = 0 $
+
+Substituïm $beta^alpha = frac(1, n) sum x_i^alpha$ a l'equació i dividim per $n$
+
+$ frac(n, alpha) + sum_(i=1)^n ln x_i - frac(sum_(i=1)^n x_i^alpha ln x_i, frac(1, n) sum_(i=1)^n x_i^alpha) = 0 $
+
+
+$ frac(1, hat(alpha)) + frac(1, n) sum_(i=1)^n ln x_i - frac(sum_(i=1)^n x_i^hat(alpha) ln x_i, sum_(i=1)^n x_i^hat(alpha)) = 0 $
+
+Obtenint l'equació que hem de minimitzar.
+
+
+#pagebreak()
+
+= Annex 2: Guia, Detalls i Estil sobre la Implementació
+
+La implementació de les simulacions es realitza en el marc del llenguatge de programació Python utilitzant principalment les llibreries de computació numèrica NumPy @harris2020array i SciPy @2020SciPy-NMeth , les quals proporcionen una API d'alt nivell fàcil d'utilitzar, amb implementacions numèriques eficients testejades per la comunitat. Els objectes numèrics que s'utilitzaran són principalment del tipus `np.array`, permetent operacions vectoritzades que acceleren la realització de simulacions.
+
+Un dels focus d'aquest treball i especialment de l'assignatura és la garantia de reproducibilitat d'un estudi de simulació, és a dir, desenvolupar el codi de la simulació de tal forma que qualsevol usuari interessat en reproduïr (de forma exacta) els fets presentats en aquesta memòria ho pugui fer sense cap inconvenient. Amb aquest fi, el codi annex a la memòria s'estructura fonamentalment en diferents blocs de codi.
+
+En primer lloc, el mòdul `src/dgm.py` conté la classe `WeibullDistribution` la qual inicialitzada amb els paràmetres `alpha` i `beta` adequats encapsula una $"Weibull"(alpha, beta)$ de la qual es pot generar una mostra de mida $n$ mitjançant el mètode `sample(n: int)`, que implementa el mètode descrit a l'apartat anterior. La generació de nombres aleatoris ben definida la proporciona NumPy amb `np.random.default_rng(seed)`, que per darrera implementa l'algoritme de Mersenne-Twister proporcionada una llavor (`seed`). S'observa que, creat un objecte generador de nombres aleatoris de NumPy `rng`, la classe `WeibullDistribution` permet ser inicialitzada amb aquest generador especificament, de forma que si es canvia de paràmetres durant l'estudi de simulació, el fet de compartir el generador garanteix el control total sobre la seqüència de nombres que es van generant a cada punt del programa. 
+
+
+Els diferents mètodes d'estimació descrits prèviament s'implementen com a funcions al mòdul 
+`src/inference.py`.
+1. *Median Ranks Regression (MRR)*: En el cas del MRR, la funció `median_ranks_regression` pren una mostra de simulació arbitrària i implementa el procediment explicat anteriorment. En particular, el paràmetre `method` permet escollir entre `"beta"` i `"bernard"`, per calcular els rangs medians utilitzan la forma explícita de la funció beta incompleta regularitzada (disponible per `from scipy.special import betaincinv`) o bé l'aproximació de Bernard. En ambdós casos s'utilitzen operacions matricials de NumPy, de forma que el procés és vectoritzat i per tant més ràpid. Finalment, els Mínims Quadrats es computen mitjançant `linregress` de `scipy.stats`.
+2. *Maximum Likelihood Estimation (MLE)*: *TODO*
+
+Posar totes les classes a lo copia i enganxa. Més enllà, fer ènfasi al main, i fer un esforç en que imprimieixi els mateixos results exactes que es presenten al report. (EG la taula, s'ha de trobar com fer-ho)
+
+
+= Annex 3: Resultats
+
 #figure(
   text(size: 9pt)[
     #table(
@@ -584,61 +649,4 @@ En aquest context, denotem $theta$ com el valor real del paràmetre i $hat(theta
   caption: [Resultats de la simulació per a $alpha=3.0, beta=3.0.$. Els valors es mostren com a Estimació (MCSE).]
 ) <tbl-results-alpha30-beta30>
 
-= Results
 
-Resultats: he agrupat en csv per alpha beta. Cadascun conté 3 files, una per a cada n. proposo escriure directament aquestes taules a l'apartat de resultats, partint-ho per MLE, MRR i Betrand
-1. files: n 
-2. Columnes: Biax, MCSE MSE de MRR i després de MLE
-3. Hi haurà 9 taules, una per cada valor diferent de alpha beta.
-
-
-#pagebreak()
-= Annex 1 
-
-Derivada respecte $beta$:
-
-$ frac(partial ell, partial beta) = -frac(n alpha, beta) - (sum_(i=1)^n x_i^alpha) (frac(partial, partial beta) beta^(-alpha)) $
-$ frac(partial ell, partial beta) = -frac(n alpha, beta) - (sum_(i=1)^n x_i^alpha) (-alpha beta^(-alpha - 1)) $
-$ -frac(n alpha, beta) + alpha beta^(-alpha - 1) sum_(i=1)^n x_i^alpha = 0 $
-
-Multipliquem per $beta / alpha$ ($alpha, beta != 0$):
-$ -n + beta^(-alpha) sum_(i=1)^n x_i^alpha = 0 $
-$ beta^alpha = frac(1, n) sum_(i=1)^n x_i^alpha $
-
-Aïllant $beta$, obtenim $hat(beta)$ com una funció respecte $hat(alpha)$:
-
-$ hat(beta) = (frac(1, n) sum_(i=1)^n x_i^hat(alpha))^(1 / hat(alpha)) $
-
-Derivada parcial respecte $alpha$:
-
-$ frac(partial ell, partial alpha) = frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n frac(partial, partial alpha) (frac(x_i, beta))^alpha $
-
-Si en adonem que $frac(partial, partial alpha) z^alpha = z^alpha ln z$, podem posar $z_i = x_i / beta$:
-
-$ frac(partial ell, partial alpha) = frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha ln(frac(x_i, beta)) = 0 $
-
-Substituïnt $ln(x_i / beta) = ln x_i - ln beta$:
-
-$ frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha (ln x_i - ln beta) = 0 $
-
-Usant l'expressió de $beta$, sabem que $sum (x_i / beta)^alpha = n$. I ho expandim a l'últim terme:
-
-$ frac(n, alpha) - n ln beta + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha ln x_i + ln beta underbrace(sum_(i=1)^n (frac(x_i, beta))^alpha, = n) = 0 $
-
-
-$ frac(n, alpha) + sum_(i=1)^n ln x_i - sum_(i=1)^n (frac(x_i, beta))^alpha ln x_i = 0 $
-
-Substituïm $beta^alpha = frac(1, n) sum x_i^alpha$ a l'equació i dividim per $n$
-
-$ frac(n, alpha) + sum_(i=1)^n ln x_i - frac(sum_(i=1)^n x_i^alpha ln x_i, frac(1, n) sum_(i=1)^n x_i^alpha) = 0 $
-
-
-$ frac(1, hat(alpha)) + frac(1, n) sum_(i=1)^n ln x_i - frac(sum_(i=1)^n x_i^hat(alpha) ln x_i, sum_(i=1)^n x_i^hat(alpha)) = 0 $
-
-Obtenint l'equació que hem de minimitzar.
-
-= Annex
-
-Posar totes les classes a lo copia i enganxa. Més enllà, fer ènfasi al main, i fer un esforç en que imprimieixi els mateixos results exactes que es presenten al report. (EG la taula, s'ha de trobar com fer-ho)
-
-#bibliography("bibliography.bib", style: "ieee", title: "Bibliografia")
