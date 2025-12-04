@@ -40,7 +40,7 @@
 
 = Introducció
 
-Aquest document és la memòria de l'entrega avaluable de la primera part de l'assignatura _Simulació_ del màster MESIO, feta per Arnau Pérez Reverte i Pau Soler Valadés. El document segueix el procediment ADMEP (Aims, Data-Generation, Methods, Estimands, Performance) [TODO CITAR AIXÔ ARNAU] i contesta els punts proposats a l'enunciat de l'entrega. A diferencia d'un artícle acadèmic, en certs punts de la pràctica ens dediquem a explicar conceptes que s'haurien de donar per sabuts, però degut a la naturalesa avaluada de l'entrega, hem preferit explicar en el benentès de la màxima claredat.
+Aquest document és la memòria de l'entrega avaluable de la primera part de l'assignatura _Simulació_ del màster MESIO, feta per Arnau Pérez Reverte i Pau Soler Valadés. El document segueix el procediment ADMEP (Aims, Data-Generation, Methods, Estimands, Performance) [TODO CITAR AIXÔ ARNAU] i contesta els punts proposats a l'enunciat de l'entrega. A diferencia d'un artícle acadèmic, en certs punts de la pràctica ens dediquem a explicar conceptes que s'haurien de donar per sabuts, però degut a la naturalesa avaluada de l'entrega, hem preferit explicar en el benentès de la màxima claredat; a l'annex 4 es troben els detalls de l'implementació i com hem garantit la màxima reproducibilitat.
 
 *Sobre l'ús d'Intel·ligència Artificial Generativa*: Els continguts d'aquesta memòria han estat íntegrament escrits per humans, els seus dos autors, així com tota la seva estructura i raonaments. Tanmateix, s'ha emprat la Intel·ligència Artifical Generativa (models PerplexiyAI [TODO CITAR ARNAU] i Google Gemini 3 [TODO CITAR ARNAU]) en la recerca de fonts, explicacions sobre conceptes i pel codi de les taules que apareixen en aquest document.
 
