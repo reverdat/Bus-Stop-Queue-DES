@@ -20,7 +20,7 @@ import pandas as pd
 
 from dgm import WeibullDistribution
 from inference import ImplementedEstimationMethods
-
+from utils import PROJECT_ROOT
 
 def plot_histogram_weibull(
     sample: np.ndarray, params: Optional[Dict] = None, ax=None, save_plot: bool = True
@@ -42,7 +42,7 @@ def plot_histogram_weibull(
 
     if save_plot and params is not None and ax is None:
         plt.savefig(
-            f"weibull_{params['alpha']}_{params['beta']}.png",
+            f"{PROJECT_ROOT}/plots/weibull_{params['alpha']}_{params['beta']}.png",
             dpi=500,
             bbox_inches="tight",
         )
@@ -90,14 +90,14 @@ def plot_grid_weibull(sample_grid: Dict[Tuple, np.ndarray], save_plot: bool = Tr
     plt.tight_layout(rect=[0, 0, 1, 0.92])
 
     if save_plot:
-        plt.savefig(f"weibull_grid_{sample_size}.png", dpi=500, bbox_inches="tight")
+        plt.savefig(f"{PROJECT_ROOT}/plots/weibull_grid_{sample_size}.png", dpi=500, bbox_inches="tight")
         plt.close(fig)
     else:
         plt.show()
 
 
 def plot_estimates_method(
-    alpha: np.float64, beta: np.float64, method: str, results_dir: str = "../results"
+    alpha: np.float64, beta: np.float64, method: str, results_dir: str = "./results"
 ):
     est_file = os.path.join(results_dir, f"estimates-alpha{alpha}-beta{beta}.csv")
     sum_file = os.path.join(results_dir, f"summary-alpha{alpha}-beta{beta}.csv")
@@ -257,7 +257,7 @@ def plot_estimates_method(
         fontsize=14,
     )
 
-    filename = f"estimates-plot-alpha{alpha}-beta{beta}-{method}.png"
+    filename = f"{PROJECT_ROOT}/plots/estimates-plot-alpha{alpha}-beta{beta}-{method}.png"
     plt.savefig(filename, dpi=300, bbox_inches="tight")
     print(f"Plot saved to {filename}")
     plt.close(fig)
@@ -267,7 +267,7 @@ def plot_2d_density(
     alpha: np.float64,
     beta: np.float64,
     methods: List[ImplementedEstimationMethods],
-    results_dir: str = "../results",
+    results_dir: str = "./results",
 ):
     est_file = os.path.join(results_dir, f"estimates-alpha{alpha}-beta{beta}.csv")
     df_est = pd.read_csv(est_file)
@@ -403,12 +403,159 @@ def plot_2d_density(
         fontsize=12,
     )
 
-    filename = f"density2d-grid-alpha{alpha}-beta{beta}.png"
+    filename = f"{PROJECT_ROOT}/plots/density2d-grid-alpha{alpha}-beta{beta}.png"
     plt.savefig(filename, dpi=300, bbox_inches="tight")
     print(f"Plot saved to {filename}")
     plt.close(fig)
 
+def plot_metrics_comparison(
+    alpha: float,
+    beta: float,
+    methods: List[str],
+    param_name: str = "beta",
+    results_dir: str = ".",
+    save_plot: bool = True,
+):
+    """
+    Plots Bias, Empirical SE, and Root MSE for a specific parameter (alpha or beta)
+    across different sample sizes for the specified methods.
+    """
+    # 1. Construct the filename
+    sum_file = os.path.join(results_dir, f"summary-alpha{alpha}-beta{beta}.csv")
+    
+    if not os.path.exists(sum_file):
+        print(f"Error: Summary file not found at {sum_file}")
+        return
+
+    # 2. Read the CSV with a 3-level header (Parameter, Method, Metric)
+    try:
+        df = pd.read_csv(sum_file, header=[0, 1, 2], index_col=0)
+    except Exception as e:
+        print(f"Error reading CSV: {e}")
+        return
+
+    # 3. Select the data for the requested parameter
+    if param_name not in df.columns.levels[0]:
+        print(f"Parameter '{param_name}' not found in file.")
+        return
+    
+    sub_df = df[param_name]
+
+    # 4. Map user-provided method strings to actual column names
+    available_methods = sub_df.columns.get_level_values(0).unique()
+    selected_map = {}
+    
+    for user_method in methods:
+        match = next((m for m in available_methods if user_method.lower() in m.lower()), None)
+        if match:
+            selected_map[user_method] = match
+        else:
+            print(f"Warning: Method '{user_method}' not found in data.")
+
+    if not selected_map:
+        print("No valid methods found to plot.")
+        return
+
+    # 5. Setup the Plot
+    fig, axs = plt.subplots(nrows=1, ncols=3, figsize=(18, 5))
+    fig.subplots_adjust(wspace=0.3)
+    
+    metrics_config = [
+        ("bias", "Bias"),
+        ("empse", "Empirical SE"),
+        ("rmse", "Root MSE"),
+    ]
+
+    # CHANGED: Use a high-contrast palette (Set1) to distinguish similar methods
+    colors = sns.color_palette("Set1", n_colors=len(selected_map))
+    # Line styles cycle for extra distinction
+    line_styles = ["-", "--", "-.", ":"]
+
+    # 6. Plotting Loop
+    for col_idx, (metric_key, metric_title) in enumerate(metrics_config):
+        ax = axs[col_idx]
+        
+        for i, (user_label, full_method) in enumerate(selected_map.items()):
+            try:
+                # CHANGED: Explicit calculation for RMSE from 'mse' column
+                if metric_key == "rmse":
+                    if 'mse' in sub_df[full_method]:
+                        data = np.sqrt(sub_df[full_method]['mse'])
+                    else:
+                        print(f"MSE column missing for {full_method}")
+                        continue
+                else:
+                    data = sub_df[full_method][metric_key]
+                
+                # CHANGED: Added marker='o' to draw points at the sample sizes
+                ax.plot(
+                    data.index, 
+                    data.values, 
+                    label=user_label, 
+                    color=colors[i], 
+                    linewidth=2.5,
+                    linestyle=line_styles[i % len(line_styles)],
+                    marker='o',      # Draws the point
+                    markersize=8
+                )
+            except KeyError as e:
+                print(f"Data missing for {full_method} - {metric_key}: {e}")
+                continue
+
+        # Styling
+        ax.set_title(metric_title, fontsize=18, pad=15)
+        ax.set_xlabel(r"$n_{obs}$", fontsize=14)
+        
+        # Clean spines
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.spines['bottom'].set_color('grey')
+        
+        # Grid and Ticks
+        ax.grid(axis='y', color='lightgrey', linestyle='-', linewidth=0.5)
+        ax.tick_params(axis='y', length=0)
+        ax.tick_params(axis='x', colors='grey')
+        
+        # Specific Adjustments
+        if metric_key == "bias":
+            ax.axhline(0, color='black', linewidth=1, alpha=0.3)
+        else:
+            ax.set_ylim(bottom=0)
+
+    # 7. Legend
+    handles, labels = axs[0].get_legend_handles_labels()
+    fig.legend(
+        handles, 
+        labels, 
+        loc='lower center', 
+        bbox_to_anchor=(0.5, -0.1), 
+        ncol=len(selected_map), 
+        frameon=False, 
+        fontsize=14
+    )
+    
+    fig.suptitle(
+        f"Performance Metrics for {param_name} ($\\alpha$={alpha}, $\\beta$={beta})", 
+        fontsize=20, 
+        y=1.05
+    )
+
+    if save_plot:
+        filename = f"{PROJECT_ROOT}/plots/metrics_comparison_alpha{alpha}_beta{beta}_{param_name}.png"
+        plt.savefig(filename, dpi=300, bbox_inches="tight")
+        print(f"Plot saved to {filename}")
+        plt.close(fig)
+    else:
+        plt.show()
 
 if __name__ == "__main__":
-    plot_estimates_method(1.0, 1.5, "MLE (scipy)")
-    plot_2d_density(1.0, 1.5, ["MLE (scipy)", "MRR (beta)", "MRR (bernard)"])
+    plot_metrics_comparison(
+        alpha=1.0, 
+        beta=1.0, 
+        methods=["MLE (scipy)", "MRR (beta)", "MRR (bernard)"], 
+        param_name="beta",
+        results_dir="./results"
+    )
+    plot_estimates_method(1.0, 1.0, "MLE (scipy)")
+    plot_2d_density(1.0, 1.0, ["MLE (scipy)", "MRR (beta)", "MRR (bernard)"])

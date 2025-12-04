@@ -9,15 +9,24 @@ data and figures.
 from typing import List, Any
 from dataclasses import asdict
 import os
+from pathlib import Path
 from pprint import pprint
 
 import numpy as np
 import pandas as pd
+from utils import REPO_ROOT, PROJECT_ROOT 
 
 from simulation import SimulationComparison, ParameterEstimate
+import re
+
+from plotting import plot_metrics_comparison, plot_2d_density, plot_estimates_method
+
+PROJECT_ROOT = f"{REPO_ROOT}/assigment1"
 
 # Check if results folder exists 
-os.makedirs("../results", exist_ok=True)
+os.makedirs(f"{PROJECT_ROOT}/results", exist_ok=True)
+os.makedirs(f"{PROJECT_ROOT}/plots", exist_ok=True)
+
 
 def main():
     seed = 1234
@@ -29,6 +38,88 @@ def main():
     betas = [0.5, 1.0, 3.0]
     sample_sizes = [10, 50, 200]
 
+    # run_simulation(alphas, betas, sample_sizes)
+    generate_results_plots(f"{PROJECT_ROOT}/results")
+    ## II. PLOTTING RESULTS
+
+def generate_results_plots(results_dir: str):
+    """
+    Scans the results directory for summary files and generates all available
+    plots for every alpha/beta configuration found.
+    """
+
+    # Regex to identify summary files and extract parameters
+    pattern = re.compile(r"summary-alpha([\d\.]+)-beta([\d\.]+)\.csv")
+    
+    files = [f for f in os.listdir(results_dir) if pattern.match(f)]
+    
+    if not files:
+        print(f"No summary files found in {results_dir}")
+        return
+
+    print(f"Found {len(files)} configurations. Generating plots...")
+
+    for filename in files:
+        match = pattern.match(filename)
+        alpha_val = float(match.group(1))
+        beta_val = float(match.group(2))
+        
+        full_path = os.path.join(results_dir, filename)
+        
+        # 1. Detect Methods from the CSV header
+        try:
+            # Read just the header to get method names
+            df_head = pd.read_csv(full_path, header=[0, 1, 2], nrows=0)
+            # Level 1 contains method names (e.g., 'MLE (scipy)', 'MRR (beta)')
+            methods_in_file = list(df_head.columns.levels[1].unique())
+        except Exception as e:
+            print(f"Skipping {filename}: {e}")
+            continue
+
+        print(f"Processing alpha={alpha_val}, beta={beta_val} | Methods: {methods_in_file}")
+
+        # --- Plot Type 1: Metrics Comparison (Bias, SE, RMSE) ---
+        # Plot for Alpha
+        plot_metrics_comparison(
+            alpha=alpha_val, beta=beta_val, methods=methods_in_file,
+            param_name="alpha", results_dir=results_dir
+        )
+        # Plot for Beta
+        plot_metrics_comparison(
+            alpha=alpha_val, beta=beta_val, methods=methods_in_file,
+            param_name="beta", results_dir=results_dir
+        )
+
+        # --- Plot Type 2: 2D Joint Density ---
+        # Note: This function uses its own hardcoded path inside plotting.py 
+        # (usually {PROJECT_ROOT}/plots/...), so we just pass results_dir.
+        try:
+            plot_2d_density(
+                alpha=alpha_val, 
+                beta=beta_val, 
+                methods=methods_in_file, 
+                results_dir=results_dir
+            )
+        except Exception as e:
+            print(f"Failed 2D density plot: {e}")
+
+        # --- Plot Type 3: Estimates & CI Coverage per Method ---
+        # This needs to be called individually for each method.
+        for method in methods_in_file:
+            try:
+                plot_estimates_method(
+                    alpha=alpha_val, 
+                    beta=beta_val, 
+                    method=method, 
+                    results_dir=results_dir
+                )
+            except Exception as e:
+                print(f"Failed estimates plot for {method}: {e}")
+
+    print("All plots generated successfully.")    
+
+
+def run_simulation(alphas, beta, sample_sizes):
     scenarios = [(a, b) for a in alphas for b in betas]
 
     final_tables = {}
@@ -113,11 +204,6 @@ def main():
             f"../results/estimates-alpha{alpha}-beta{beta}.csv", index=False, float_format='%.2e',
         )
         print(f"Saved estimates for A={alpha}, B={beta}")
-
-
-    ## II. PLOTTING RESULTS
-
-    
 
 
 
