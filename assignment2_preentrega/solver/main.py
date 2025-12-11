@@ -25,7 +25,7 @@ def generate_Q_matrix(n, x, lam, mu):
 def main():
     k = 9            # capacitat del sistema (estats 0..9)
     x = 3            # mida del lot de servei
-    lam = 3.0        # tasa d'arribades (lambda)
+    lam = 5.0        # tasa d'arribades (lambda)
     mu = 2.0         # tasa de servei (mu)
 
     q = generate_Q_matrix(k+1, x, lam, mu)
@@ -38,6 +38,7 @@ def main():
     q[:, -1] = 1 # last COLUMN all ones (we later transpose it, so will end up as a row :)
     b[-1] = 1 # b vector all ones
     
+    print("Matrix Q^T")
     print(q.T)
     # Solve Q^T P = 0
     p = np.linalg.solve(q.T, b) #thank you numpy

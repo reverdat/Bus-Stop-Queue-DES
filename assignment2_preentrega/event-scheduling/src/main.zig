@@ -1,8 +1,13 @@
 const std = @import("std");
 
 pub fn main() !void {
-    // Prints to stderr, ignoring potential errors.
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    const K: u64 = 9;
+    const X: u64 = 3;
+    const lambda: f64 = 3.0;
+    const mu: f64 = 2.0;
+    
+    
+
 }
 
 

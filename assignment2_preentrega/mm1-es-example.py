@@ -4,6 +4,7 @@
 #    This runs the script showing output on the MS-DOS window, and the window does not disappear
 #    If showing output on the window is not required, then simply double-click on the .py
 #     Files with extension .pyw  do not issue a (vanishing) command window
+
 def claveSORT(A):
 	return A[1]
 
@@ -48,6 +49,7 @@ def FiServei(Ev1, it):
 		EvS = ('S', tCK + tservei, it, Ev1[3]+1)
 		EvL.append(EvS)   # se añade al final de la lista
 		EvL.sort(key=claveSORT, reverse=False) # se reordena EvL 
+
 # Código Python para simulación 
 # de una M/M/1 usando Event-Scheduling (el registro de clientes supone FIFO)
 import math

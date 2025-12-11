@@ -1,3 +1,5 @@
+#import "@preview/lovelace:0.3.0": *
+
 #set page(
   paper: "a4",
   margin: (x: 2cm, y: 2cm),
@@ -96,3 +98,25 @@ cases(
 $
 
 I ho hem fet a `solver/main.py`
+
+= Algorisme Event-Scheduling
+
+Com que em lio llegint les diapos del power em dedico a preescriure la memòria per a poder avançar, i saber què collons hem de programar.
+
+Tenim les variables d'estat del sistema:
+- Nombre de clients
+- Estat de cada servidor
+- Instant d'arribada de la següent arribada.
+- Instant de la propera sortida del sistema.
+
+L'algorisme _per se_ és molt senzill:
+
+#pseudocode-list[
+  + $N$,$lambda$, $mu$
+  + $T$ = duració simulació
+  + $e_0$, $t_0$ = first event, time of first event
+  + $t = t_0$
+  + *while* (t < T) {
+
+  }
+]
