@@ -26,7 +26,7 @@ def Arribada(Ev0, it, ncli):
 		tservei = TServei(mu) # Hay que generar salida
 		EvS = ('S',tCK + tservei, it, ncli)
 		EvL.append(EvS)   # se añade al final de la lista
-		EvL.sort(key=claveSORT, reverse=False) # se reordena EvL 
+        EvL.sort(key=lambda x: x[1], reverse=False) # se reordena EvL 
 		
 #	if S == 'ocup':
 	# Se genera nueva llegada
