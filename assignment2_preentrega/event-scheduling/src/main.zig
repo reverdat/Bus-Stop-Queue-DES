@@ -1,5 +1,6 @@
 const std = @import("std");
-const heap = @import("heap.zig");
+const print = std.debug.print;
+const heap = @import("structheap.zig");
 const rng = @import("rng.zig");
 const sampleExp = rng.rexpSampleAlloc;
 
@@ -8,18 +9,16 @@ const ArrayList = std.ArrayList;
 const Random = std.Random;
 
 pub fn main() !void {
-    var gpa = std.heap.DebugAllocator(std.heap.DebugAllocatorConfig{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    var hp = heap.Heap(u8).init();
-
-    defer hp.deinit(allocator);
+    var debug_gpa = std.heap.DebugAllocator(std.heap.DebugAllocatorConfig{}){};
+    defer _ = debug_gpa.deinit();
+    const gpa = debug_gpa.allocator();
 
     const K: u64 = 9;
     const X: u64 = 3;
     const mu: f64 = 2.0;
     const lambda: f64 = 3.0;
+
+    try eventScheduling(gpa, lambda, mu, X, K, 1000000);
 }
 
 const ServerState = enum { free, busy };
@@ -44,12 +43,16 @@ fn rexp(comptime T: type, lambda: T, gen: *Random) !T {
     return e;
 }
 
-fn eventScheduling(gpa: *std.Allocator, lambda: f64, mu: f64, x: u64, k: u64, horizon: f64) !void {
-    var hp = heap.Heap(f64).init();
-    defer hp.deinit(gpa);
+fn eventScheduling(gpa: Allocator, lambda: f64, mu: f64, x: u64, k: u64, horizon: f64) !void {
+    _ = x;
+    _ = k;
 
-    var hash = std.AutoHashMap(f64, EventType).init(gpa);
-    defer hash.deinit();
+    var hp = heap.Heap(Event).init();
+    defer hp.deinit(gpa);
+    var client_counter: u64 = 1;
+    var processed_events: u64 = 0;
+    var num_clients_in_system: u64 = 0;
+    var server_state: ServerState = ServerState.free;
     var t_clock: f64 = 0.0;
 
     var prng = Random.DefaultPrng.init(blk: {
@@ -60,23 +63,42 @@ fn eventScheduling(gpa: *std.Allocator, lambda: f64, mu: f64, x: u64, k: u64, ho
     var gen = prng.random();
 
     const first_arrival: f64 = try rexp(f64, lambda, &gen);
-    const arrival_event: Event = Event{ .time = first_arrival, .type = EventType.arrival, .client_id = 1 };
-    hp.push(gpa, first_arrival);
-    hash.put(first_arrival, arrival_event);
+    const arrival_event: Event = Event{ .time = first_arrival, .type = EventType.arrival, .client_id = client_counter };
 
-    while (t_clock <= horizon and hp.len() > 0) {
-        const next_event_time = hp.pop().?;
-        const next_event: Event = hash.get(next_event_time).?;
+    try hp.push(gpa, arrival_event);
+
+    while (t_clock <= horizon and hp.len() > 0) : (processed_events += 1) {
+        const next_event = hp.pop().?;
+        t_clock = next_event.time;
 
         // TODO: METRIQUES DE CUES
         switch (next_event.type) {
             EventType.arrival => {
-                const next_arrival_time = try rexp(f64, lambda, &gen);
-                hp.push(gpa, next_arrival_time);
+                client_counter += 1;
+                num_clients_in_system += 1;
 
-                const new_arrival_event: Event = Event{ .time = first_arrival, .type = EventType.arrival, .client_id = 1 };
-                hash.put(next_arrival_time, new_arrival_event);
+                const next_arrival_time = try rexp(f64, lambda, &gen);
+                const new_arrival_event: Event = Event{ .time = t_clock + next_arrival_time, .type = EventType.arrival, .client_id = client_counter };
+                try hp.push(gpa, new_arrival_event);
+                if (server_state == ServerState.free) {
+                    server_state = ServerState.busy;
+                    const next_service_time = try rexp(f64, mu, &gen);
+                    const next_service_event: Event = Event{ .time = t_clock + next_service_time, .type = EventType.service, .client_id = client_counter };
+                    try hp.push(gpa, next_service_event);
+                }
+            },
+            EventType.service => {
+                num_clients_in_system -= 1;
+
+                if (num_clients_in_system > 0) {
+                    const next_service_time: f64 = try rexp(f64, mu, &gen);
+                    const next_service_event: Event = Event{ .time = t_clock + next_service_time, .type = EventType.service, .client_id = next_event.client_id + 1 };
+                    try hp.push(gpa, next_service_event);
+                } else {
+                    server_state = ServerState.free;
+                }
             },
         }
+        print("{any}\n", .{hp.list.items});
     }
 }
