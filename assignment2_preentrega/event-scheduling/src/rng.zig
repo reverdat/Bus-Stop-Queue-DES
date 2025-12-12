@@ -237,7 +237,7 @@ fn runif(comptime T: type, a: T, b: T, rng: *Random) !T {
 // que al intentar allibrerar la memòria de const __sample no funcinarà el .deinit() ja que ha de ser mutable.
 
 /// Generate an sample of a uniform distribution [a,b)
-fn runifSampleAlloc(allocator: *Allocator, n: u32, comptime T: type, a: T, b: T, rng: *Random) !ArrayList(T) {
+pub fn runifSampleAlloc(allocator: *Allocator, n: u32, comptime T: type, a: T, b: T, rng: *Random) !ArrayList(T) {
     var sample: ArrayList(T) = .empty;
     try sample.ensureTotalCapacity(allocator.*, n);
 
@@ -264,7 +264,7 @@ fn rwbSampleAlloc(allocator: *Allocator, n: u32, comptime T: type, lambda: T, k:
 }
 
 /// Generate a sample of a Exponential distribution of parameter lambda.
-pub fn rexpSampleAlloc(allocator: *Allocator, n: u32, comptime T: type, lambda: T, rng: *Random) !ArrayList(T) {
+fn rexpSampleAlloc(allocator: *Allocator, n: u32, comptime T: type, lambda: T, rng: *Random) !ArrayList(T) {
     var sample: ArrayList(T) = .empty;
     try sample.ensureTotalCapacity(allocator.*, n);
 

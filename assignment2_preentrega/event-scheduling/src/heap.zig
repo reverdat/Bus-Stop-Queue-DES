@@ -3,7 +3,7 @@ const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
 const swap = std.mem.swap;
 
-/// Implementació d'un MinHeap molt rudimentaria, però 
+/// Implementació d'un MinHeap molt rudimentaria, però
 /// absolutament eficient.
 ///
 /// - push: afegeix un valor al heap
@@ -12,12 +12,12 @@ const swap = std.mem.swap;
 pub fn Heap(comptime T: type) type {
     const type_info = @typeInfo(T);
     if (type_info != .int and type_info != .float) @compileError("Just integers and floats allowed.\n");
-    
+
     return struct {
         const Self = @This();
-        
+
         list: ArrayList(T),
-        
+
         pub fn init() Self {
             return Self{
                 .list = .empty,
@@ -28,28 +28,29 @@ pub fn Heap(comptime T: type) type {
             self.list.deinit(allocator);
         }
 
+        pub fn len(self: *Self) usize {
+            return self.list.items.len;
+        }
+
         fn getParentIndex(i: usize) usize {
             if (i == 0) return 0;
-            return (i-1)/2;
+            return (i - 1) / 2;
         }
 
         fn getLeftChildIndex(i: usize) usize {
-            return 2*i + 1; 
+            return 2 * i + 1;
         }
-        
+
         fn getRightChildIndex(i: usize) usize {
-            return 2*i + 2; 
+            return 2 * i + 2;
         }
-       
-      
+
         pub fn push(self: *Self, gpa: Allocator, value: T) !void {
-            
             try self.list.append(gpa, value);
             var child_index: usize = self.list.items.len - 1;
             var parent_index: usize = getParentIndex(child_index);
 
             while (self.list.items[child_index] < self.list.items[parent_index]) {
-                
                 swap(T, &self.list.items[parent_index], &self.list.items[child_index]);
                 child_index = parent_index;
                 parent_index = getParentIndex(child_index);
@@ -57,8 +58,8 @@ pub fn Heap(comptime T: type) type {
 
             return;
         }
-    
-        pub fn pop(self: *Self) ?T{
+
+        pub fn pop(self: *Self) ?T {
             if (self.list.items.len == 0) return null;
 
             const min = self.list.swapRemove(0);
@@ -130,7 +131,7 @@ test "MinHeap - Edge Cases" {
     // Single Element
     try heap.push(a, 42);
     try std.testing.expectEqual(@as(?i32, 42), heap.pop());
-    
+
     // Heap should be empty again
     try std.testing.expectEqual(@as(?i32, null), heap.pop());
 
