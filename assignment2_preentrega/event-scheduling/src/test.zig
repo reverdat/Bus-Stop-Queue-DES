@@ -1,8 +1,22 @@
 const std = @import("std");
+const MultiArrayList = std.MultiArrayList;
 
-pub fn main() void {
-    const i: usize = 4;
-    if (i == 0) return 0;
-    const result = @as(usize, (i - 1) / 2);
-    try std.debug.print("{d}\n", .{result});
+const Representation = enum {hello, bye};
+
+const Complex = struct {
+    a: f32,
+    b: f32,
+    r: Representation,
+};
+
+pub fn main() !void {
+    var list = MultiArrayList(Complex){};
+    const a = std.heap.page_allocator;
+
+    const c1 = Complex{.a = 3.0, .b = 4.0, .r = Representation.hello}; 
+    try list.append(a, c1);
+
+    std.debug.print("{any}\n", .{list});
+    std.debug.print("{any}\n", .{list.items[0]});
 }
+
