@@ -12,8 +12,8 @@ def generate_Q_matrix(n, x, lam, mu):
     for i in range(1, n):
         j = max(0, i-x)
         q[i, j] = mu
-
     
+    # compute the diagonal
     for i in range(n):
         diagonal = np
         suma_sortides = np.sum(q[i, :])
@@ -21,13 +21,10 @@ def generate_Q_matrix(n, x, lam, mu):
     
     return q
 
-
-def main():
-    k = 9            # capacitat del sistema (estats 0..9)
-    x = 3            # mida del lot de servei
-    lam = 5.0        # tasa d'arribades (lambda)
-    mu = 2.0         # tasa de servei (mu)
-
+"""
+Computes the average passangers (L) with a closed formula
+"""
+def mmx1k_solver(lam, mu, x, k):
     q = generate_Q_matrix(k+1, x, lam, mu)
     print("Matrix Q")
     print(np.round(q, 2))
@@ -44,13 +41,20 @@ def main():
     p = np.linalg.solve(q.T, b) #thank you numpy
 
     print("Stationary State Probability:")
-    pstring = ''.join([f"p_{i}: {prob:.4f}\n" for i, prob in enumerate(p)])
-    print(pstring)
+    print(''.join([f"p_{i}: {prob:.4f}\n" for i, prob in enumerate(p)]))
     print(f"\nTotal probability sum: {np.sum(p):.4f}")
 
     l = sum(i * p[i] for i in range(k+1))
+    
+    return l
 
-    print(f"(Result) L = {l:.4f}")
 
 if __name__ == "__main__":
-    main()
+    k = 9            # capacitat del sistema (estats 0..9)
+    x = 3            # mida del lot de servei
+    lam = 5.0        # tasa d'arribades (lambda)
+    mu = 2.0         # tasa de servei (mu)
+
+    result = mmx1k_solver(lam, mu, x, k)
+
+    print(f"(Result) L = {result:.4f}")
