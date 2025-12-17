@@ -41,7 +41,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Poetry via pipx
-        run: pipx install poetry==${{ env.POETRY_VERSION }}
+        run: pipx install poetry==${{ env.POETRY_VERSION }} --python python
+
 
       - name: Configure Poetry
         run: poetry config virtualenvs.in-project true
