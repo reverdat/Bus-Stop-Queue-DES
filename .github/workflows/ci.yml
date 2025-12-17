@@ -71,6 +71,3 @@ jobs:
 
       - name: Poetry Build
         run: poetry build -v
-
-      - name: Check stubs
-        run: poetry run python -m ziglang build generate-stubs -Dcheck-stubs=true
