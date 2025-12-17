@@ -1,5 +1,5 @@
 [build-system]
-requires = ["poetry-core", "ziggy-pydust==0.24.0"]
+requires = ["poetry-core", "ziggy-pydust==0.23.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
@@ -20,10 +20,10 @@ script = "build.py"
 
 [tool.poetry.dependencies]
 python = "^3.12"
-ziglang = "0.13.0"
+ziglang = "0.11.0"
 
 [tool.poetry.group.dev.dependencies]
-ziggy-pydust = "0.24.0"
+ziggy-pydust = "0.23.0"
 pytest = "9.0.2"
 ruff = "^0.14.0"
 
