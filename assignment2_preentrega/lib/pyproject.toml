@@ -20,6 +20,7 @@ script = "build.py"
 
 [tool.poetry.dependencies]
 python = "^3.12"
+ziglang = "0.15.2"
 
 [tool.poetry.group.dev.dependencies]
 ziggy-pydust = "0.26.0"
