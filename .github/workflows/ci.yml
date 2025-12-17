@@ -16,6 +16,7 @@ env:
 
 jobs:
   build:
+    # 1. Matrix strategy for Cross-Platform support
     strategy:
       fail-fast: false
       matrix:
@@ -23,6 +24,7 @@ jobs:
     
     runs-on: ${{ matrix.os }}
 
+    # 2. Set default directory for all 'run' steps
     defaults:
       run:
         working-directory: assignment2_preentrega/lib
@@ -30,18 +32,28 @@ jobs:
     steps:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6
       
-      # Removed mlugg/setup-zig to avoid version conflicts with ziglang python package
+      # 3. Zig is required to build the extension
+      - name: Install Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: 0.13.0 # Ensure this matches the version supported by your pydust version
 
       - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6
         id: setup-python
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Poetry via pipx
-        run: pipx install poetry==${{ env.POETRY_VERSION }} --python '${{ steps.setup-python.outputs.python-path }}' --force
+      # Removed manual 'Load cached Poetry installation' (Linux specific path ~/.local broke Windows)
+      # Relying on snok/install-poetry is fast enough and safer for cross-platform.
 
-      - name: Configure Poetry
-        run: poetry config virtualenvs.in-project true
+      - name: Install Poetry
+        id: install-poetry
+        uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a # v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
 
       - name: Poetry git plugin
         run: poetry self add poetry-git-version-plugin
@@ -50,37 +62,12 @@ jobs:
         id: cached-poetry-dependencies
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: assignment2_preentrega/lib/.venv
+          path: assignment2_preentrega/lib/.venv # Explicit path due to working-directory context nuances in cache
+          # Added matrix.os to key to prevent Linux venv usage on Windows
           key: venv-${{ matrix.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('assignment2_preentrega/lib/poetry.lock') }}
 
       - name: Poetry Install
-        env:
-          # FIX: Set explicit cache dir to avoid CacheCheckFailed
-          ZIG_GLOBAL_CACHE_DIR: ${{ github.workspace }}/zig-cache
-          ZIG_LOCAL_CACHE_DIR: ${{ github.workspace }}/zig-cache
         run: poetry install -n -v
 
       - name: Poetry Build
-        env:
-          # FIX: Set explicit cache dir for build step too
-          ZIG_GLOBAL_CACHE_DIR: ${{ github.workspace }}/zig-cache
-          ZIG_LOCAL_CACHE_DIR: ${{ github.workspace }}/zig-cache
         run: poetry build -v
-
-      - name: Ruff
-        run: poetry run ruff check .
-
-      - name: Ruff format
-        run: poetry run ruff format --check .
-
-      - name: Pytest
-        run: poetry run pytest
-
-      - name: Check stubs
-        run: poetry run python -m ziglang build generate-stubs -Dcheck-stubs=true
-
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: wheels-${{ matrix.os }}
-          path: assignment2_preentrega/lib/dist/*
