@@ -9,16 +9,18 @@ const swap = std.mem.swap;
 /// - push: afegeix un valor al heap
 /// - pop: elimina el minim del min heap
 /// - peek: mostra quin és el menor valor al heap
-pub fn Heap(comptime T: type,) type {
+pub fn Heap(
+    comptime T: type,
+) type {
     const type_info = @typeInfo(T);
     if (type_info != .@"struct") @compileError("Just integers and floats allowed.\n");
-    
+
     if (!@hasField(T, "time")) @compileError("No comparison key 'time' found\n");
-    
+
     return struct {
         const Self = @This();
 
-        list: ArrayList(T),
+        list: std.ArrayListUnmanaged(T),
 
         pub fn init() Self {
             return Self{
@@ -104,9 +106,8 @@ pub fn Heap(comptime T: type,) type {
     };
 }
 
-
 const Task = struct {
-    time: i32,  // The heap requires this!
+    time: i32, // The heap requires this!
     id: u32 = 0, // Extra data to prove we carry payload
 };
 test "MinHeap Integers" {
@@ -116,16 +117,17 @@ test "MinHeap Integers" {
     defer heap.deinit(a);
 
     try heap.push(a, Task{ .time = 10, .id = 100 });
-    try heap.push(a, Task{ .time = 5,  .id = 200 });
+    try heap.push(a, Task{ .time = 5, .id = 200 });
     try heap.push(a, Task{ .time = 20, .id = 300 });
-    try heap.push(a, Task{ .time = 2,  .id = 400 });    
-    
-    try std.testing.expectEqual(@as(i32, 2),  heap.pop().?.time);
-    try std.testing.expectEqual(@as(i32, 5),  heap.pop().?.time);
+    try heap.push(a, Task{ .time = 2, .id = 400 });
+
+    try std.testing.expectEqual(@as(i32, 2), heap.pop().?.time);
+    try std.testing.expectEqual(@as(i32, 5), heap.pop().?.time);
     try std.testing.expectEqual(@as(i32, 10), heap.pop().?.time);
     try std.testing.expectEqual(@as(i32, 20), heap.pop().?.time);
-    
-    try std.testing.expect(heap.pop() == null);}
+
+    try std.testing.expect(heap.pop() == null);
+}
 
 test "MinHeap - Edge Cases (Struct)" {
     const a = std.testing.allocator;
@@ -138,7 +140,7 @@ test "MinHeap - Edge Cases (Struct)" {
     // 2. Single Element
     try heap.push(a, Task{ .time = 42 });
     try std.testing.expectEqual(@as(i32, 42), heap.pop().?.time);
-    
+
     try std.testing.expect(heap.pop() == null);
 
     // 3. Negative Times
@@ -147,8 +149,8 @@ test "MinHeap - Edge Cases (Struct)" {
     try heap.push(a, Task{ .time = 0 });
 
     try std.testing.expectEqual(@as(i32, -10), heap.pop().?.time);
-    try std.testing.expectEqual(@as(i32, -5),  heap.pop().?.time);
-    try std.testing.expectEqual(@as(i32, 0),   heap.pop().?.time);
+    try std.testing.expectEqual(@as(i32, -5), heap.pop().?.time);
+    try std.testing.expectEqual(@as(i32, 0), heap.pop().?.time);
 }
 
 test "MinHeap - Duplicates (Struct)" {
@@ -164,10 +166,10 @@ test "MinHeap - Duplicates (Struct)" {
     // Expect: 1, then 5, then 5
     const first = heap.pop().?;
     try std.testing.expectEqual(@as(i32, 1), first.time);
-    
+
     const second = heap.pop().?;
     try std.testing.expectEqual(@as(i32, 5), second.time);
-    
+
     const third = heap.pop().?;
     try std.testing.expectEqual(@as(i32, 5), third.time);
 }
