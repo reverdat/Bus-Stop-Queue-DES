@@ -53,7 +53,7 @@ if __name__ == "__main__":
     k = 9            # capacitat del sistema (estats 0..9)
     x = 3            # mida del lot de servei
     lam = 5.0        # tasa d'arribades (lambda)
-    mu = 2.0         # tasa de servei (mu)
+    mu = 4.0         # tasa de servei (mu)
 
     result = mmx1k_solver(lam, mu, x, k)
 

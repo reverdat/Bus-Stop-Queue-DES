@@ -1,119 +1,177 @@
 const std = @import("std");
-const print = std.debug.print;
-const heap = @import("structheap.zig");
-const rng = @import("rng.zig");
-const sampleExp = rng.rexpSampleAlloc;
 
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const Random = std.Random;
 
-pub fn main() !void {
-    var debug_gpa = std.heap.DebugAllocator(std.heap.DebugAllocatorConfig{}){};
-    defer _ = debug_gpa.deinit();
-    const gpa = debug_gpa.allocator();
+const heap = @import("structheap.zig");
+const structs = @import("config.zig");
 
-    const K: u64 = 9;
-    const X: u64 = 3;
-    const mu: f64 = 1.0;
-    const lambda: f64 = 0.5;
+const Distribution = structs.Distribution;
+const SimResults = structs.SimResults;
+const SimConfig = structs.SimConfig;
 
-    print("Starting and MM1 silulation\n", .{});
-    try eventSchedulingMM1(gpa, lambda, mu, X, K, 10000);
-}
-
-const ServerState = enum { free, busy };
 const EventType = enum { arrival, service, boarding };
-const RNGError = error{ InvalidRange, NotAFloat };
 
-const Event = struct { time: f64, type: EventType, client_id: u64 };
+pub const Event = struct {
+    time: f64,
+    type: EventType,
+    id: u64,
+};
 
-fn runif(comptime T: type, a: T, b: T, gen: *Random) !T {
-    if (@typeInfo(T) != .float) {
-        return RNGError.NotAFloat;
-    }
-    if (b < a) {
-        return RNGError.InvalidRange;
-    }
-    return a + (b - a) * gen.float(T);
-}
-
-fn rexp(comptime T: type, lambda: T, gen: *Random) !T {
-    const u = try runif(T, 0, 1, gen);
-    const e: T = 1.0 / lambda * (-@log(u));
-    return e;
-}
-
-fn eventSchedulingMM1(gpa: Allocator, lambda: f64, mu: f64, x: u64, k: u64, horizon: f64) !void {
-    _ = x;
-    _ = k;
-
+pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !SimResults {
     var hp = heap.Heap(Event).init();
     defer hp.deinit(gpa);
-    var client_counter: u64 = 1;
+
     var processed_events: u64 = 0;
-    var num_clients_in_system: u64 = 0;
-    var server_state: ServerState = ServerState.free;
     var t_clock: f64 = 0.0;
-    
-    var area_under_q: f64 = 0.0;
+
+    // variables d'estat globals
+    var num_passengers_queue: u64 = 0;
+    var current_bus_capacity: u64 = 0;
+    var lost_passengers: u64 = 0;
+    var boarding_active: bool = false;
+
+    var area_queue: f64 = 0.0;
+    //var area_system: f64 = 0.0;
     var last_event_time: f64 = 0.0;
+    var event_id_counter: u64 = 0;
+
+    // primera arribada de passatjer per començar la simulació
+    const t_p = try config.passenger_interarrival.sample(random);
+    event_id_counter += 1;
+    try hp.push(gpa, Event{ .time = t_p, .type = .arrival, .id = event_id_counter });
+
+    // primera arribada de bus per començar la simulació
+    const t_b = try config.bus_interarrival.sample(random);
+    event_id_counter += 1;
+    try hp.push(gpa, Event{ .time = t_b, .type = .service, .id = event_id_counter });
+
+    // guardem els passatjers amb quan arriben a la parada, quan marxen i la diferència
+    // guardem l'ordre de tots els esdeveniments que han passat
+    var traca: ArrayList(Event) = .empty;
+
+    while (t_clock <= config.horizon and hp.len() > 0) : (processed_events += 1) {
+        const next_event = hp.pop().?; // we use ? because we are pretty sure that cannot fail
+        t_clock = next_event.time;
+        try traca.append(gpa, next_event);
+        
+        const deltat = t_clock - last_event_time;
+
+        // L_q = num_passengers_queue
+        area_queue += @as(f64, @floatFromInt(num_passengers_queue)) * deltat;
+     //   area_system += @as(f64, @floatFromInt(system_size)) * dt;
+        last_event_time = t_clock;
+
+        switch (next_event.type) {
+            EventType.arrival => { // passanger arrives
+
+                event_id_counter += 1;
+                const time_passanger = try config.passenger_interarrival.sample(random);
+                const next_time = t_clock + time_passanger;
+
+                try hp.push(gpa, Event{
+                    .time = next_time,
+                    .type = .arrival, //hostia que guapo
+                    .id = event_id_counter,
+                });
+
+                // if the sistem is full, client is lost
+                if (num_passengers_queue >= config.system_capacity) {
+                    lost_passengers += 1;
+                } else {
+                    num_passengers_queue += 1; //len de passangers_in_queue
+                }
+            },
+            EventType.service => { // bus arrives
+                current_bus_capacity = try config.bus_capacity.sampleInt(random);
+
+                event_id_counter += 1;
+                const time_bus = try config.bus_interarrival.sample(random);
+                const next_bus_time = t_clock + time_bus;
+
+                try hp.push(gpa, Event{ .time = next_bus_time, .type = .service, .id = event_id_counter });
+                
+                // if we are NOT boarding start the boarding
+                if (num_passengers_queue > 0 and current_bus_capacity > 0 and boarding_active == false) {
+                    event_id_counter += 1;
+                    const duration = try config.boarding_time.sample(random);
+
+                    try hp.push(gpa, Event{ .time = t_clock + duration, .type = .boarding, .id = event_id_counter });
+                    
+                    // si arriba un bus i podem, començem el boarding
+                    boarding_active = true;
+                }
+
+            },
+            EventType.boarding => { // passatjer ha pujat a l'autobus
+                if (num_passengers_queue > 0 and current_bus_capacity > 0) {
+
+                    num_passengers_queue -= 1;
+                    current_bus_capacity -= 1;
+
+                    // si encara hi ha passatjers a la marquesina i el bus no és ple (segon fix a preguntar)
+                    if (num_passengers_queue > 0 and current_bus_capacity > 0) {
+                        event_id_counter += 1;
+                        const duration = try config.boarding_time.sample(random);
+
+                        try hp.push(gpa, Event{ .time = t_clock + duration, .type = .boarding, .id = event_id_counter });
+                    } else {
+                        boarding_active = false; //stop the boearding once there is no passnegers or the bus is full 
+                    }
+                }
+            },
+        }
+    }
+
+    return SimResults{
+        .average_clients = area_queue / t_clock,
+        .duration = t_clock,
+        .lost_passengers = lost_passengers,
+        .processed_events = processed_events,
+        .traca = traca,
+    };
+}
+
+
+pub fn main() !void {
+    var gpa_allocator = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa_allocator.deinit();
+    const gpa = gpa_allocator.allocator();
+
+    // set up the stdout buffer
+    var buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&buffer);
+    const stdout = &stdout_writer.interface;
 
     var prng = Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&seed));
         break :blk seed;
     });
-    var gen = prng.random();
+    const rng = prng.random();
 
-    const first_arrival: f64 = try rexp(f64, lambda, &gen);
-    const arrival_event: Event = Event{ .time = first_arrival, .type = EventType.arrival, .client_id = client_counter };
+    // per a una cua M/M^[X]/1/K considerem la configuració següent
+    // Arribades de passatgers: exp(lambda)
+    // Serveis de busos: exp(mu)
+    // Capacitat del bus: X
+    // Maxim nombre de persones a la marquesina: K
 
-    try hp.push(gpa, arrival_event);
+    const config = SimConfig{
+        .horizon = 100000.0,
+        .passenger_interarrival = Distribution{ .exponential = 5.0 }, // lambda
+        .bus_interarrival = Distribution{ .exponential = 4.0 }, // mu
+        .bus_capacity = Distribution{ .constant = 3.0 }, // X
+        .boarding_time = Distribution{ .constant = 1e-16 }, // minim perque no importa
+        .system_capacity = 9, // K
+    };
+
+    try stdout.print("{f}\n", .{config});
+    try stdout.flush();
+
+    var results = try eventSchedulingBus(gpa, rng, config);
+    defer results.traca.deinit(gpa);
     
-    while (t_clock <= horizon and hp.len() > 0) : (processed_events += 1) {
-        const next_event = hp.pop().?;
-        t_clock = next_event.time;
-        
-        // estem fent la integral :3
-        area_under_q += @as(f64, @floatFromInt(num_clients_in_system)) * (t_clock - last_event_time);
-        last_event_time = t_clock;
-
-        switch (next_event.type) {
-            EventType.arrival => {
-                client_counter += 1;
-                num_clients_in_system += 1;
-
-                const next_arrival_time = try rexp(f64, lambda, &gen);
-                const new_arrival_event: Event = Event{ .time = t_clock + next_arrival_time, .type = EventType.arrival, .client_id = client_counter };
-                try hp.push(gpa, new_arrival_event);
-        
-                if (server_state == ServerState.free) {
-                    server_state = ServerState.busy;
-                    const next_service_time = try rexp(f64, mu, &gen);
-                    const next_service_event: Event = Event{ .time = t_clock + next_service_time, .type = EventType.service, .client_id = client_counter };
-                    try hp.push(gpa, next_service_event);
-                }
-            },
-            EventType.service => {
-                num_clients_in_system -= 1;
-
-                if (num_clients_in_system > 0) {
-                    const next_service_time: f64 = try rexp(f64, mu, &gen);
-                    const next_service_event: Event = Event{ .time = t_clock + next_service_time, .type = EventType.service, .client_id = next_event.client_id + 1 };
-                    try hp.push(gpa, next_service_event);
-                } else {
-                    server_state = ServerState.free;
-                }
-            },
-            else => {}, 
-        }
-    }
-
-    const average_clients = area_under_q / t_clock;
-
-    print("----- Simulation finished! -----\n", .{});
-    print("\tDuration: \t\t{e} \n\tEvents processed: \t{d} \n\tAverage clients (L): \t{e}", .{t_clock, processed_events, average_clients});
+    try stdout.print("{f}\n", .{results});
+    try stdout.flush();
 }
-
-
