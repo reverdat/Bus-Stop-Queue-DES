@@ -41,6 +41,10 @@
 ]
 
 = Introducció
+
+Aquí diem de què va la preentrega i com de feliços som pujant abans d'hora a l'autobús
+
+
 = Definició del Sistema
 _Aquí definim el comportament del sistema d'espera en detall de forma que justifiquem les decisions i assumpcions preses en la seva programació._
 
@@ -64,15 +68,55 @@ Sigui $(n, c) in bb(Z)_(+)^(2)$ l'estat del sistema d'espera en un determinat in
 - $M^([X])$: Temps de servei exponencial amb taxa per _batches_ (lots).
 - $1$: Un servidor.
 - $K$: Capacitat del sistema (finita).
-\
-#figure(
-  image("img/diagrama_transicions.jpg", width: 100%),
-  caption: [
-    Diagrama de transicions del S.E. de la parada d'autobús
-  ],
-  supplement: [Figura],
-)
-\
+// \
+// #figure(
+//   image("img/diagrama_transicions.jpg", width: 100%),
+//   caption: [
+//     Diagrama de transicions del S.E. de la parada d'autobús
+//   ],
+//   supplement: [Figura],
+// )
+// \
+//
+
+== Resolució del Sistema Manualment
+
+Això està escrit tot en brut a sota, entenc que la preentrega diu que això ho hem de posar, oi?
+
+
+= Implementació
+
+Hem simulat el sistema $M\/M^([X])\/1\/K$ mitjançant l'algorisme _Event-Scheduling_, que consisteix en que cada vegada que un esdeveniment d'un tipus concret succeeix, en generem un del mateix tipus per mantenir l'algorisme funcionant, fins que un dels esdeveniments superi l'horitzó temporal no sent atès mai.
+
+// TODO: posem el pseudocodi ben escrit o sudant?
+
+Hem escollit Zig @zig com el llenguatge per a implementar l'algorisme. Zig és un llenguatge de sistemes amb gestió de memòria manual i control de flux i memòria explícit, i tot i no tenir una _release_ estable, és absolutament funcional per a la gran majoria de casos d'ús. Hem escollit aquest llenguatge ja que al ser una simulació una tasca relativament exigent per a horitzons llargs o per a múltiples repeticions, ens voliem allunyar de llenguatges interpretats com Python o R, que haguessin donat resultats penosos a nivell de temps i rendiment. També hem escollit usar Zig sobre C, ja que la filosofia de Zig és extremadament semblant a la de C (gestió de memòria manual i simplicitat) però amb sensibilitats modernes que prevenen molts dels problemes comuns que té C: violacions de segment, indeterminacions en codi i l'ús de `make` per a compilar el projecte.
+
+Sobre la implementació, la primera consideració és descartar l'ús d'una array o `ArrayList` per a mantenir els esdeveniments a memòria, ja que només es necessita l'esdeveniment amb el temps més petit. L'ús de qualsevol tipus d'estructura de dades estil llista implicaria una inserció a la llista de cost $O(n)$, ja que s'haurien de desplaçar tots els elements de la llista una posició per a fer lloc al nou. L'avantatge de l'ús d'una llista ordenada és que té un accés molt ràpid, $O(log_2(n))$ ja que només hem de cercar la llista un cop.
+
+En el cas de l'_Event-Scheduling_ no hem d'accedir a un element qualsevol, sinó que només hem d'accedir al primer element. Per tant, hem emprat una implementació de l'estructura Heap @heap, que guarda els elements sense ordre, però garanteix que el primer element de la estructura sempre serà el de menor temps, donant-nos un accés de $O(1)$. En comparació amb la llista, també guanyem en inserció, ja que un heap té un cost d'accés de $O(log_2(n))$ al usar una estructura d'arbre binari per emmagatzemar les dades. El heap és la millor estructura per aquest problema, ja que els requeriments que tenim són als d'accedir al mínim element el més ràpid possible, sense necessitat de en un moment qualsevol cercar un element qualsevol.
+
+
+= Conclusions
+
+Aquí diem tot el que hem aconseguit.
+
+= Appendix: Ús i Execució del Codi
+
+Com executem això
+
+= Appendix: Implementacions Extres
+
+Per entendre millor l'algorisme de l'_Event-Scheduling_, el nostre flux de treball ha necessitat de dues implementacions més primerenques a mode de prototip i de prova de concepte.
+
+El primer pas va ser reimplementar el codi d'exemple d'una cua $M\/M\/1$ en python, i comprovar que els resultats eren exactament els mateixos. Curiosament, la nostra implementació ha resultat ser bastant diferent de la original, així que l'adjuntem al codi de la pràctica al fitxer `mm1.py`.
+
+Seguidament, per confirmar que erem capaços d'implementar Zig amb prou soltura, varem traduïr la implementació del `mm1.py` a Zig. Aquest fitxer també es pot trobar a `mm1.zig`.
+
+Com a detall extra, vàrem comentar de paraula que entregariem una llibreria de python amb l'algorisme compilat. Malauradament, això no ha estat possible per problemes tècnics que van més enllà de l'abast de la pràctica i dels nostres coneixements. Per poder empaquetar el binari de Zig en una llibreria de Python, s'ha intentat usar `Ziggy-Pydust`, una llibreria que genera totes les dependències extres per a poder cridar el binari des de Python. Amb poc intents i seguint la documentació, hem aconseguit que funcioni perfectament per a Linux, però la llibreria és massa jove com per a tenir support per a Windows, per això vam haver de desestimar la iniciativa i entregar un binari directament.
+
+= Notes sobre la resolució del sistema M/M^[X]/1/K
+L'enunciat de la preentrega diu que s'han de posar aquests nombres a mà, els deixo al final intentant posar-ho a lloc.
 
 *Estat estacionari:* Les probabilitats no canvien durant segons el temps $t$, ergo $P_n$ és fix.
 
@@ -153,24 +197,5 @@ $
 
 I ho hem fet a `solver/main.py`
 
-= Algorisme Event-Scheduling
 
-Com que em lio llegint les diapos del power em dedico a preescriure la memòria per a poder avançar, i saber què collons hem de programar.
-
-Tenim les variables d'estat del sistema:
-- Nombre de clients
-- Estat de cada servidor
-- Instant d'arribada de la següent arribada.
-- Instant de la propera sortida del sistema.
-
-L'algorisme _per se_ és molt senzill:
-
-#pseudocode-list[
-  + $N$,$lambda$, $mu$
-  + $T$ = duració simulació
-  + $e_0$, $t_0$ = first event, time of first event
-  + $t = t_0$
-  + *while* (t < T) {
-
-  }
-]
+#bibliography("works.yml")

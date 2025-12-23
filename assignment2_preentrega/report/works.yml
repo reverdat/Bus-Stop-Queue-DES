@@ -1,0 +1,19 @@
+zig:
+  type: Web
+  title: The Zig Programming Language
+  author: Zig Software Foundation
+  url: https://ziglang.org/
+  date: 2025 # Or the current year/access date
+
+heap:
+  type: Book
+  title: Introduction to Algorithms
+  edition: 4
+  date: 2022
+  author:
+    - Cormen, Thomas H.
+    - Leiserson, Charles E.
+    - Rivest, Ronald L.
+    - Stein, Clifford
+  publisher: MIT Press
+  location: Cambridge, MA
