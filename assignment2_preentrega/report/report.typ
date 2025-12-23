@@ -63,22 +63,37 @@ suposem el següent:
 3. El temps que triga un usuari a pujar de la marquesina cap al bus és una v.a. degenerada i de valor constant $nu approx 0$. 
 Sigui $(n, c) in bb(Z)_(+)^(2)$ l'estat del sistema d'espera en un determinat instant de temps, on $n$ és el nombre d'usuaris a la marquesina i $c$ és la capacitat restant del bus.
 - Si $c = 0$, aleshores pel definit assumim que no hi ha un autobús a la parada. Per tant, només pot succeïr que arribi un altre usuari a la cua definida per la marquesina, o bé que arribi un autobús a la parada amb una determinada capacitat $c^prime$, i per tant es correspon amb transicions a l'estat $(n+1, 0)$ només si $n+1 <= K$ o bé a $(n, c^prime)$, respectivament.
-- Si $c > 0$, aleshores en aquest instant es troben $n$ usuaris a la marquesina i un bus amb capacitat restant $c$ estacionat a la parada. 
+- Si $c > 0$, aleshores en aquest instant es troben $n$ usuaris a la marquesina i un bus amb capacitat restant $c$ estacionat a la parada. Per tant, només pot succeïr que un usuari pugi a l'autobús o bé que arribi un altre usuari a la marquesina, transicionant als estats $(n-1, c-1)$ o $(n+1, c)$ només si $n+1 <= K$, respectivament. Les transicions del primer tipus triguen un temps $nu$ que suposem aproximadament nul.
+
+\
+#figure(
+  image("img/diagrama_transicions.jpg", width: 100%),
+  caption: [
+    Diagrama de transicions del S.E. de la parada d'autobús ($c=3$)
+  ],
+  supplement: [Figura],
+)
+\
+
+Observem que el fet que el temps de pujada a l'autobús sigui aproximadament nul implica que, un cop arriba un autobús i el sistema es troba en l'estat $(n, c)$, aleshores la pròxima transició és $(n, c) -> (n-1, c-1)$ amb probabilitat aproximadament 1, i aquesta transició succeeix casi immediatament. Aquest comportament es repeteix indefinidament fins que el sistema arriba a l'estat $(n^prime, 0)$ per algun $n^prime >= 0$. 
+
+Per tant, aquesta cadena de transicions immediates provoca que els $c$ serveis individuals s'agrupin en essencialment un únic servei en lot de $c$ usuaris. Això permet ignorar la capacitat de l'autobús com a part de l'estat del sistema i considerar únicament el nombre d'usuaris a la marquesina.
+
+\
+#figure(
+  image("img/mmx1k.jpg", width: 100%),
+  caption: [
+    Diagrama de transicions d'una cua ($M\/M^([3])\/1\/K$)
+  ],
+  supplement: [Figura],
+)
+\
 
 - $M$: Arribades markovianes.
 - $M^([X])$: Temps de servei exponencial amb taxa per _batches_ (lots).
 - $1$: Un servidor.
 - $K$: Capacitat del sistema (finita).
-// \
-// #figure(
-//   image("img/diagrama_transicions.jpg", width: 100%),
-//   caption: [
-//     Diagrama de transicions del S.E. de la parada d'autobús
-//   ],
-//   supplement: [Figura],
-// )
-// \
-//
+
 
 == Resolució del Sistema Manualment
 
