@@ -28,11 +28,8 @@ pub fn build(b: *std.Build) !void {
     const release_step = b.step("release", "Build for Windows (x64), Linux (x64) and Mac (ARM64)");
 
     const targets: []const std.Target.Query = &.{
-        // Windows x64
         .{ .cpu_arch = .x86_64, .os_tag = .windows },
-        // Linux x64 (Standard GNU ABI)
         .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
-        // Mac ARM64 (Apple Silicon)
         .{ .cpu_arch = .aarch64, .os_tag = .macos },
     };
 

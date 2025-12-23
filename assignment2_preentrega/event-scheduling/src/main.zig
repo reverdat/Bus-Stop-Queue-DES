@@ -3,6 +3,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const Random = std.Random;
+const eql = std.mem.eql;
 
 const heap = @import("structheap.zig");
 const structs = @import("config.zig");
@@ -133,6 +134,18 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
     };
 }
 
+const HELP = 
+    \\This program runs a Simulation of an M/M^[X]/1/K system. 
+    \\Both arrivals and services are Exp, with parameters lambda (arrivals) and mu (services).
+    \\X is the batch services, and K is the maximum system clients.
+    \\Boarding times are assumed to be negliglble (1e-16)
+    \\
+    \\Usage:
+    \\      lambda  <f64>
+    \\      mu      <f64>
+    \\      X       <u64>
+    \\      K       <u64>
+;
 
 pub fn main() !void {
     var gpa_allocator = std.heap.GeneralPurposeAllocator(.{}){};
@@ -143,6 +156,26 @@ pub fn main() !void {
     var buffer: [1024]u8 = undefined;
     var stdout_writer = std.fs.File.stdout().writer(&buffer);
     const stdout = &stdout_writer.interface;
+
+    // argAlloc per a fer-ho correcte
+    const args = try std.process.argsAlloc(gpa);
+    defer std.process.argsFree(gpa, args);
+
+    if (eql(u8, args[1], "-h") or
+        eql(u8, args[1], "--help") or
+        eql(u8, args[1], "help"))
+    {
+        try stdout.print("{s}\n", .{HELP});
+        try stdout.flush();
+        std.process.exit(0);
+    }
+
+    if (args.len != 6) {
+        try stdout.print("Usage: lambda <float> mu <float> X <int> K <int> horizon <int>. Write --help for more\n", .{});
+        try stdout.flush();
+        std.process.exit(0);
+    }
+    
 
     var prng = Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
