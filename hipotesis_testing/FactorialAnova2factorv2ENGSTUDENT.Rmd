@@ -1,0 +1,437 @@
+---
+title: "Permutational tests: Factorial Anova 2 way"
+author: 'By: S. Civit'
+date: ''
+output:
+  html_document:
+    code_folding: show
+    highlight: haddock
+    keep_md: yes
+    number_sections: yes
+    theme: readable
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+# Factorial designs... beyond one way
+
+  - There are several approaches to analyze factorial designs using permutational test **but the main problem is the interaction**.
+
+  - Therefore, it will be necessary to design the permutational test to test the interaction so that the main effects are controlled. One way to control main effects is to constrain the way we make our permutations
+
+# Approach: Step 2 how to proceed (what and how)
+
+  - In **factorial designs** and especially when a factorial design includes a significant interaction, things get complicated when doing the permutational test, at the point of **what and how we permute** (step 2).
+
+  - `Anderson (2001)` and `Manly (2007)`propose alternatives of how to do it although `Edgington and Onghena (2007)` point out that it is not possible to create an exact test of interaction. However, there are good approximations that can be used.
+
+  - This document will mainly deal with two of them, such as Manly (2007) and Edginton (2007), although as I indicated above, Anderson (2001) has one of the best discussions about this type of evidence.
+
+
+## Case of study: Data
+
+## Aims and scope: 
+
+**Biogas** is produced during anaerobic digestion of organic substances by a consortium of microorganisms. Biogas consists mainly of methane ($CH_4$) and carbon dioxide ($CO_2$). Other gases such as dinitrogen ($N_2$), water vapour ($H_2O$), ammonia ($NH_3$), hydrogen sulfide ($H2_S$) and other sulfur compounds could also be found therein. In order to be used as a source of energy to generate heat and electricity, biogas `should be cleaned`.
+
+The main issues due to the high concentrations of $H_2S$ in biogas are its corrosive action, which damages engines and the production of sulfur oxides ($SO_x$) due to $H_2S$ combustion
+
+We want to evaluate the efficiency of four bioremediation treatments in the reduction of hydrogen sulfide $H_2S$. It is believed that the efficiency depends on the characteristics of the soil and for this reason the experimental design is a two way crossed anova with soils of similar initial contamination. It results in ppmv obtained in its reduction after applying the treatment have been:
+
+Hydrogen sulfide (also known as $H_2S$, sewer gas, swamp gas, stink damp, and sour damp) is a colorless gas known for its pungent "rotten egg" odor at low concentrations. It is extremely flammable and highly toxic.
+
+The best ways to remove $H_2S$ from biogas are the biolgical methods with the use of biofilters, biotrickling filters, bioscrubbers and using of activated sludge
+
+
+**Bioremediation** broadly refers to any process wherein a biological system (typically bacteria, microalgae, fungi, and plants), living or dead, is employed for removing environmental pollutants from air, water, soil, flue gasses, industrial effluents etc., in natural or artificial settings.[1] The natural ability of organisms to adsorb, accumulate, and degrade common and emerging pollutants has attracted the use of biological resources in treatment of contaminated environment.[1] In comparison to conventional physicochemical treatment methods bioremediation may offer considerable advantages as it aims to be sustainable, eco-friendly, cheap, and scalable.
+
+We want to evaluate the efficiency of four bioremediation treatments in the reduction of hydrogen sulfide $H_2S$. It is believed that the efficiency depends on the characteristics of the soil and for this reason the experimental design is a two way crossed anova with soils of similar initial contamination. It results in ppmv obtained in its reduction after applying the treatment have been:
+
+Parametric model:
+
+
+$$Y_{ijk}=\mu+\alpha_i+\beta_k+\alpha\beta_{ik}+\epsilon_{eij} \hspace{0.5cm}  \textrm {where} \hspace{0.3cm} \small{i=1, 2\:\:\: j=1,2,3,4 \: \: k=1,2,3}$$ 
+
+Dataset:
+
+
+                 Granitic     Sedimentary
+     Method1    61;58;55     67;64;61
+     Method2    64;65;61     64;66;65
+     Method3    51;56;53     59;55;53
+     Method4    52;53;54     58;55;51
+
+
+
+```{r}
+ppvm <- c(61,58,55,67,64,61,64,65,61,64,66,65,51,56,53,59,55,53,52,53,54,58,55,51)
+# Els factors Soil and Method labels 1 i 2 i 1, 2, 3, 4, respectively
+soil <- as.factor(rep(1:2, each = 3, times = 4)) 
+method <- as.factor(rep(1:4, each = 6))
+mod1 <- lm(ppvm ~ soil + method + soil:method)
+summary(aov(mod1))
+
+ppvm2<-as.data.frame()
+taula.ANOVA = anova(aov(ppvm ~ soil + method + soil:method, data = ppvm2)) 
+taula.ANOVA
+```
+
+  - For example, if we want to control the main effect of **soil** , we could restrict our permutations so that we only permute between **method within each soil group**. That is, we could swap observations between method for granitic soil and then do the same for sedimentary soils.
+  
+  - This would help us control for **method effects**, but we still have potential soil size effects.
+  
+  - If we further restrict the permutations to stay within each soil x method combination, we would get the same F for all the allowed permutations, and this would bring us nothing. So we have to try something else.
+
+
+# Manly approach: (permutation of observations without restrictions)
+
+##  Step 2: Manly's idea: What and how
+
+  - One way to permute our data would be to **randomize all experimental cells**. 
+
+## Step 3: Statistic election and value of statistic: Fratio
+
+  - We would calculate the Fratio to test $F_{SM}, F_S\: and F_M$ under the null hypothesis of exchangeability.
+
+  
+```{r}
+# Standard Anova on these data
+mod1 <- lm(ppvm ~ soil + method + soil:method)
+ANOVA <- summary(aov(mod1))
+ANOVA
+is.list(ANOVA)
+
+Fsoil <-ANOVA[[1]]$"F value"[1]   # Saving F values for future use
+Fsoil
+Fmethod <-ANOVA[[1]]$"F value"[2]
+Fmethod
+Finteract <-ANOVA[[1]]$"F value"[3]
+Finteract # F_SM a dalt, aquest és el MOSTRAL
+```
+
+
+## Step 4: Pvalue
+  
+  - Resampling (according to Manly) **permutation of observations without restrictions**.
+
+```{r}
+nperm <- 9999 
+set.seed(1234)
+FS <- numeric(nperm)    #Set up space to store F values as calculated.
+FM <- numeric(nperm)  
+FSM <- numeric(nperm)
+
+for (i in 1:nperm) {
+  newppvm <- sample(ppvm, 24)
+  mod2 <- lm(newppvm ~ soil + method + soil:method)
+  b <- summary(aov(mod2))
+  # complete main effects
+  FSM[i] <- b[[1]]$"F value"[3]
+  FM[i] <- b[[1]]$"F value"[2]
+  FS[i] <- b[[1]]$"F value"[1]
+}
+```
+
+  - **F_interact** Hypothesis null distribution 
+  
+```{r}
+hist(FSM, breaks=70, freq=F, xlim=c(0,20), ylim=c(0,1.0))
+abline(v=Finteract, col="red", lwd = 4, lty = 4)
+```
+
+  - P-value **F_interaction**
+  
+```{r}  
+# pvalor:
+probFSM<-(sum(FSM >= Finteract) + 1) / (nperm + 1)
+probFS<-(sum(FS >= Fsoil) + 1) / (nperm + 1)
+probFM<-(sum(FM >= Fmethod) + 1) / (nperm + 1)
+probFSM
+probFM
+probFS
+```
+
+We would do the same with the **two main effects**. This is the procedure recommended by Manly (2007) and is perhaps the easiest to carry out.
+
+### Notes sobre el que ha dit a classe
+
+Diseny anova 2 factors fixes creuats amb interacció (perque hi ha rèpliques, la combinació dels dos pot donar una reposta esperada (o no))
+
+$Y_{i|k} = \mu + \alpha_i + \beta_j + (\alpha \beta)_{ij} + \rho_{i|k}$
+
+on $\alpha$ és l'efecte del mètode, $\beta$ és l'efecte del terra i $\rho \sim N(0, \sigma)$ és el residu.
+
+Volem veure la significancia de $\alpha$ i $\beta$
+
+Li direm
++ Main effect a \alpha i \beta
++ Interaction effects a \alpha\beta
+
+L'efocament d'aquest document diu que el PRIMER que s'ha d'avaluar és la interació. Hi ha tres maneres d'enfocar aquests tipus de problemes.
++ Manly: bon enfocament, però li falta sensibilitat en coses.
++ Eddgington: 
++ SW (still and white)
+
+Perquè començem amb la interacció?
+
+Si la interacció és significativa, ja no fa falta que miris molt els parametres per separat. és a dir, si la interació és significativa IMPLICA que no es pot explicar per la suma dels dos valors per separat.
+
+Manley: Permuto TOT: (2*4*8)! -> montecarlo
+és el que fa primer.
+
+1. Interacció: El que hem dit, tothom comença per aquí perque si és significativa se lia. $H_0: (\alpha\beta)_{ij} = 0 i=1,2,3,4 j=1,2$ -> les cel·les no tenen res a veure.
+Jo crec que no hauria de tenir alternativa 
+
+### Fsoil
+
+Com que ens ha sortit que la interació no és significativa, el que hem de fer és comprovar \alhpa i \beta per separat.
+
+```{r}
+for (i in 1:nperm) {
+  newppvm <- sample(ppvm, 24)
+  mod2 <- lm(newppvm ~ soil + method + soil:method)
+  b <- summary(aov(mod2))
+  # complete main effects
+  FS[i] <- b[[1]]$"F value"[1]
+}
+
+probFS<-(sum(FS >= Fsoil) + 1) / (nperm + 1)
+probFS
+``` 
+      - P-value **Fsoil**
+  
+  - **Fmethod** distribution under null hypothesis
+  
+    - P-value **Fmethod**
+
+
+# Edgington approximation (permutation restricted to main effects)
+
+Edgington (2007) approaches the problem from a different approach.
+
+  - He states that **there is no exact proof for interaction**, but suggests that you can get an "indication" of the presence of interaction in the same way Manly did.
+  
+  - Step 3 Statistic election: Fratio (same as Manly case)
+  
+  - Step 4: Approximate P-value calculation (same as the Manly case)
+
+
+##  Edgington Step 2: What and How
+
+
+In this approach it starts with **interaction**. In other words that is
+
+1. Obtain the **F-value of the interaction of the original data**.
+  
+  - You need to **permute all observations** `nperm` (nperm= 9999),
+  
+  - **calculate the F for the interaction** of the permutations and **obtain the pvalue of the interaction**
+  
+
+2. What about **main effects**?
+
+  - If **interaction is significative**, we don't care about **main effects**. If **intereaction is not significant**, we need to take a look to **main effects**
+
+`Edgington` argues that if **the interaction is not significant**, the model is $Y_{ijk} = \mu + \alpha_i + \beta_j + \epsilon_ {ijk}$ , which is an **additive model without interaction **. Therefore you can 
+
+  - Test **Soil by shuffling the data** for each method separately between size categories, and 
+  
+  - Test **Methods by shuffling the data** for each soil among the method categories. 
+
+
+## Step 3: Statistic election and value of statistic: Finteraction
+
+$F_{SM_{ij}}=0.4057$ (see above section step 3 (`Manly approach`)
+
+  
+
+### Edgington interaction NO significative: Main effect Soil
+
+
+```{r}
+nperm <- 9999 
+# Model aditiu
+# Efecte principal: Soil
+set.seed(1234)
+FS_edgington <- numeric(nperm)
+#FS[1] <- Fsize
+
+for (i in 1:nperm) {
+	M1 <- ppvm[1:6]      # Combining across size within month
+	M2 <- ppvm[7:12]
+	M3 <- ppvm[13:18]
+	M4 <- ppvm[19:24]
+	temp1 <- sample(M1,6, replace = FALSE)
+	temp2 <- sample(M2,6, replace = FALSE)
+	temp3 <- sample(M3,6, replace = FALSE)
+	temp4 <- sample(M4,6, replace = FALSE)
+	newppvm <- c(temp1, temp2,temp3, temp4) 
+	mod5 <- summary(aov(newppvm ~ soil + method )) 
+	FS_edgington[i] <- mod5[[1]]$"F value"[1] 
+} 
+```
+
+
+  - **FSoil** Hypothesis null distribution
+  
+```{r}
+hist(FS_edgington, breaks=70, freq=F, xlim=c(0,10), ylim=c(0,1.0))
+abline(v=Fsoil, col="red", lwd = 4, lty = 4)
+```
+
+  - P-valor **FSoil**
+  
+```{r}  
+# pvalor:
+(sum(FS_edgington >= Fsoil) + 1) / (nperm + 1)
+```
+### Edgington interaction NO significative: Main effect Method
+
+
+```{r}
+# Standard Anova on these data
+mod1 <- lm(ppvm ~ soil + method + soil:method)
+ANOVA <- summary(aov(mod1))
+ANOVA
+is.list(ANOVA)
+
+#Fsize <-ANOVA[[1]]$"F value"[1]   # Saving F values for future use
+#Fsize
+Fmethod <-ANOVA[[1]]$"F value"[2]
+Fmethod
+#Finteract <-ANOVA[[1]]$"F value"[3]
+#Finteract
+
+```  
+
+```{r}
+# Model aditiu
+# Efecte principal: Method
+nperm <- 9999 
+set.seed(1234)
+
+FM_edgington <- numeric(nperm)
+FM <- numeric(nperm) 
+
+
+# Complete
+
+```
+
+
+### Complete...
+
+  - **Fmethod** Hypothesis null distribution
+
+
+  - P-valor **Fmethod**
+  
+
+
+
+# Still and White's (SW) approach: (Permutation of Residuals) 
+
+Still and White (1981) follow Edgington in using restricted randomization for main effects, but they control for main effects by **using residuals**.
+In this case the residuals are what is left over after you **remove row and column effects**. 
+
+Aquest és el primer test que controla bé el paràmetre de la interacció!
+
+## SW Step 2: What and How
+
+  - First: Interaction test 
+
+If you look at all of your data combined, there are potential **main effects** (in our case Method) included in them. But if we subtract out those effects and use the residuals that result, **we can test the interaction without worrying about main effects**.
+
+
+One simple way to do this is $\epsilon_{ijk} = Y_{ijk} - \bar{Y}_{i.} - \bar{Y}_{.j} + \bar {Y}_{...}$. NOTA: com que resta dues vegades la \bar{Y} el que fa per compensar-ho és sumar-la una altra vegada!
+Aquest canvi és completament conceptual.
+
+
+In other words, 
+  
+  - In other words for each observation in Row1 and Column2, we subtract out the Row1 mean and the Column2 mean and add back in the grand mean and the same for the rest of the cells
+  
+  -  If you now ran a complete analysis of variance on the residuals you would find that the sums of squares for Soil and Methods were exactly 0, and the **F for the interaction would be a fair test of that interaction uncontaminated by main effects**.
+
+
+  - The procedure just described is the easiest way to describe what `Still and White` are doing in computing their interaction, 
+  
+  - When it comes to the main effects, `Still and White follow` Edgington's lead and will obtain the same results (above section)
+  
+ 
+ Nòtis que el model lineal només modelitza les dues variables, la mitjana va directament al resdiu tal com s'ha parlat.
+```{r}
+#  Es pot fer obtenint la interacció a partir del residus de la forma següent
+#  Y[ij] - Ybar[i,] - Ybar[.j] + Ybar[..]
+
+# Ho farem de forma més senzilla . La interacció l'obtindrem dels residus del modelo aditiu.
+# Aquestes seren les "noves dades" a partir de les qual nomes avaluarem interacció
+
+# Model aditiu
+mod2 <- lm(ppvm ~ soil+ method) # NO HI POSO EL RESIDU A PROPÒSIT! 
+residus <- mod2$residuals   # These are the residuals from the additive model
+```
+
+```{r}
+# Now do the resampling to get the interaction F.
+nperm<-9999
+set.seed(1234)
+SWint <- numeric(nperm)
+#Finteract
+
+# utilitzes els resdius com a dataset, perque n'hi ha un per a cada observació
+# repetim la idea de manley, tots amb tots però ara ja estàs mirant les interaccions
+# que han quedat al resiu adequadament.
+for (i in 1:nperm) {
+  newppvm <- sample(residus, 24, replace = FALSE) 
+  mod7 <- summary(aov(newppvm ~ soil + method + soil:method)) 
+  SWint[i] <- mod7[[1]]$"F value"[3]
+} 
+```
+
+  - **F_interact** Hypothesis null distribution
+  
+  
+```{r}
+hist(SWint, breaks=70, freq=F, xlim=c(0,20), ylim=c(0,1.0))
+abline(v=Finteract, col="red", lwd = 4, lty = 4)
+```
+
+  - P-valor **F_interact**
+  
+```{r}  
+# pvalor:
+(sum(SWint >= Finteract) + 1) / (nperm + 1)
+```
+  
+  
+
+# Summary
+
+  - The solutions given here are not the only possibilities, but they cover the important ones in **crossed factorial designs**
+
+  - In any case, if you want to go deeper into the subject, the article `Anderson et al (2001)` is excellent.
+
+  - Basically, he suggests using a Manly-like test for interaction, where you use unrestricted permutation of raw observations across all cells. This is particularly useful with small samples. When it comes to testing main effects, Anderson suggests permuting residuals under the reduced model. This is equivalent to calculating the residuals from an additive model and then randomizing them in the same way that Edgington would randomize the observations, that is, by restricting the randomizations to individual levels of the other variable
+
+El que és més complicat és saber què és el que es pot permutar, aquesta és la part difícil de veure :(
+
+# References
+
+  - Anderson, M. J. (2001) Permutation tests for univariate or multivariate analysis of variance and regression. Canadian Journal of Fisheries and Aquatic Science, 58, 626-639.
+  - Edgington, E. S. and Onghena, P. (2007) Randomization Tests (4th ed.)London, Chapman & Hall.
+
+  - Manly, B. F. J. (2007) Randomization, Bootstrap, and Monte Carlo Methods in Biology (3rd ed.), London: Chapman & Hall.
+
+

@@ -1,0 +1,101 @@
+---
+title: "Random generation: Inverse method. Examples "
+author: 'Arnau Pérez Reverte'
+output:
+  html_document:
+    code_folding: show
+    highlight: haddock
+    keep_md: yes
+    number_sections: yes
+    theme: readable
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+      toc_depth: 3
+  pdf_document:
+    toc: yes
+---
+# Statement: Random generation Inverse method: Exponential
+
+```{r}
+
+#tini <- proc.time()
+
+lambda <- 2
+nsim <- 10^5
+set.seed(1)
+U <- runif(nsim)
+random_values <- -log(U)/lambda # -log(1-U)/lambda
+#tiempo <- proc.time() - tini
+#tiempo
+## user system elapsed
+## 0.00 0.01 0.02
+hist(random_values, breaks = "FD", freq = FALSE, main= "Exponential Random generation",
+xlim = c(0, 5), ylim = c(0, 2.5), col="blue")
+curve(dexp(x, lambda), lwd = 2, add = TRUE, col="green")
+
+```
+
+# Statement: Random generation Inverse method: Weibull
+What models
+## Aims and Scopes
+Parameters, hazar function, risk function
+## Relationship with other models
+## Generator
+```{r}
+
+#tini <- proc.time()
+
+lambda <- 2
+k <- 10
+nsim <- 10^5
+set.seed(1)
+U <- runif(nsim)
+random_values <- lambda*(-log(U))^(1/k)
+#tiempo <- proc.time() - tini
+#tiempo
+## user system elapsed
+## 0.00 0.01 0.02
+hist(random_values, breaks = "FD", freq = FALSE, main= "Weibull Random generation",
+xlim = c(0, 5), ylim = c(0, 2.5), col="blue")
+curve(dweibull(x, k, lambda), lwd = 2, add = TRUE, col="green")
+
+```
+
+# Statement: Random generation Inverse method: Cauchy
+
+## Aims and Scopes
+## Relationship with other models
+## Generator
+```{r}
+#tini <- proc.time()
+
+gam <- 0.5
+x0 <- 0
+nsim <- 10^5
+set.seed(1)
+U <- runif(nsim)
+random_values <- x0+gam*tan(pi*(U-1/2))
+
+hist(random_values, 
+     breaks = "FD", 
+     freq = FALSE, 
+     main= "Cauchy Random generation", 
+     xlim = c(-5, 5), 
+     ylim = c(0, 2.5), 
+     col="blue")
+curve(dcauchy(x, location = x0, scale = gam), lwd = 2, add = TRUE, col="green")
+```
+# Statement: Random generation Inverse method: Gamma
+
+## Aims and Scopes
+## Relationship with other models
+## Generator
+
+
+# Statement: Random generation Inverse method: Gamma
+
+## Aims and Scopes
+## Relationship with other models
+## Generator
