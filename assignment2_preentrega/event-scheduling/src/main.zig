@@ -4,6 +4,7 @@ const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const Random = std.Random;
 const eql = std.mem.eql;
+const Timer = std.time.Timer;
 
 const heap = @import("structheap.zig");
 const structs = @import("config.zig");
@@ -161,6 +162,12 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(gpa);
     defer std.process.argsFree(gpa, args);
 
+    if (args.len != 6) {
+        try stdout.print("Usage: lambda <float> mu <float> X <int> K <int> horizon <int>. Write --help for more\n", .{});
+        try stdout.flush();
+        std.process.exit(0);
+    }
+    
     if (eql(u8, args[1], "-h") or
         eql(u8, args[1], "--help") or
         eql(u8, args[1], "help"))
@@ -169,13 +176,6 @@ pub fn main() !void {
         try stdout.flush();
         std.process.exit(0);
     }
-
-    if (args.len != 6) {
-        try stdout.print("Usage: lambda <float> mu <float> X <int> K <int> horizon <int>. Write --help for more\n", .{});
-        try stdout.flush();
-        std.process.exit(0);
-    }
-    
 
     var prng = Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
@@ -194,7 +194,7 @@ pub fn main() !void {
     const x = try std.fmt.parseFloat(f64, args[3]);
     const k = try std.fmt.parseInt(u64, args[4], 10);
     const horizon = try std.fmt.parseFloat(f64, args[5]);
-
+    
     const config = SimConfig{
         .horizon = horizon,
         .passenger_interarrival = Distribution{ .exponential = lambda }, // lambda
@@ -206,10 +206,14 @@ pub fn main() !void {
 
     try stdout.print("{f}\n", .{config});
     try stdout.flush();
-
+    
+    var timer = try Timer.start();
     var results = try eventSchedulingBus(gpa, rng, config);
     defer results.traca.deinit(gpa);
-    
+    const end = timer.read();
+
+    const seconds = @as(f64, @floatFromInt(end)) / 1_000_000_000.0;
+
     try stdout.print("{f}\n", .{results});
-    try stdout.flush();
-}
+    try stdout.print("Time Elapsed: {d:.4} seconds\n", .{seconds});
+    try stdout.flush();}
