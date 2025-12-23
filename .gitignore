@@ -1,2 +1,2 @@
-*/report/*.pdf
-*/.zig-cache/*
+**/report/*.pdf
+.zig-cache/
