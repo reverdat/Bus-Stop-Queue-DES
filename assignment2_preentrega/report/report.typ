@@ -42,17 +42,23 @@
 
 = Introducció
 
-Aquí diem de què va la preentrega i com de feliços som pujant abans d'hora a l'autobús
+L'objectiu principal d'aquesta pràctica és el disseny, implementació i anàlisi d'un motor de simulació d'esdeveniments discrets (Discrete Event Simulation) aplicat a un sistema d'espera quotidià: una parada d'autobús. En aquest sistema interaccionen dues entitats principals, els usuaris (clients) i els autobusos (servidors), sota condicions d'incertesa en els temps d'arribada i capacitats.
 
+Aquest document constitueix la *preentrega* del treball. La finalitat d'aquesta fase inicial no és encara simular el sistema amb tota la seva complexitat estocàstica final, sinó establir una base sòlida de programari i validar-ne la correcció (verificació del model). Per aconseguir-ho, s'assumeix un conjunt d'hipòtesis simplificadores, com ara temps de servei nuls i taxes exponencials, que permeten modelitzar la parada teòricament com una cua markoviana $M\/M^([X])\/1\/K$. Aquesta reducció és crucial en aquesta etapa, ja que ens permet obtenir solucions analítiques exactes de l'estat estacionari i utilitzar-les com a referència per auditar la precisió del nostre simulador.
+
+La metodologia de treball s'ha basat en la implementació de l'algorisme de programació d'esdeveniments (_Event-Scheduling_) utilitzant el llenguatge de sistemes **Zig**, prioritzant l'eficiència computacional i la gestió robusta de memòria per a la generació de trajectòries llargues.
+
+A continuació, es presenta primer la definició formal del sistema i la seva justificació teòrica. Seguidament, es detallen les decisions d'arquitectura preses durant la implementació en Zig. Finalment, es comparen els resultats estadístics de la simulació (concretament l'ocupació mitjana del sistema segons la Llei de Little) amb els valors teòrics esperats per demostrar la validesa del simulador desenvolupat.
 
 = Definició del Sistema
-_Aquí definim el comportament del sistema d'espera en detall de forma que justifiquem les decisions i assumpcions preses en la seva programació._
+En aquesta secció formalitzem el funcionament de la parada d'autobús. El sistema es modelitza com un procés estocàstic de temps continu on interactuen dues entitats: els usuaris (que arriben i fan cua) i el servidor (l'autobús que arriba, carrega usuaris i marxa). Detallarem certes hipòtesis que justifiquem les decisions que hem pres a l'hora d'implementar el model.
 
+Per a aquesta preentrega, l'objectiu és validar el motor de simulació contrastant-lo amb resultats analítics coneguts. Per aquest motiu, apliquem simplificacions que permeten tractar el sistema com una cua caracteritzada com a cadena de Màrkov de temps continu (CTMC).
 
-== Comportament
+== Dinàmica i Components
 El sistema d'espera es tracta d'una parada d'autobús on arriben usuaris que esperen a que arribi un autobús per tal de pujar-hi i eventualment marxar. Es poden definir dos principals components: la marquesina i l'autobús (quan aquest hi arriba).
 \
-1. *Marquesina*: Es tracta d'una plataforma de capacitat finita $K$ on els usuaris arriben en un temps aleatori $tau_i$ i esperen a ser servits per un autobús. S'assumeix que els usuaris són respectuossos i s'ordenen en una cua per ordre d'arribada per tal de pujar a l'autobús seguint la doctrina FIFO (First-In First-Out). Si en un determinat moment la cua conté $K$ usuaris i arriba un de nou, aquest és descartat.
+1. *Marquesina*: Es tracta d'una plataforma de capacitat finita $K$ on els usuaris arriben de forma individual en un temps aleatori $tau_i$ i esperen a ser servits per un autobús. S'assumeix que els usuaris són respectuossos i s'ordenen en una cua per ordre d'arribada per tal de pujar a l'autobús seguint la doctrina FIFO (First-In First-Out). Si en un determinat moment la cua conté $K$ usuaris i arriba un de nou, aquest és descartat.
 2. *Autobús*: És l'únic servidor del sistema d'espera. Arriba en un temps aleatori a la parada i amb una capacitat aleatòria $X$. Permet començar l'embarcament dels usuaris esperant a la marquesina, els quals triguen a pujar a l'autobús un temps aleatori. El bus marxa de la parada només quan exhaureix la seva capacitat o bé quan no queden usuaris esperant a la marquesina.
 
 == Modelització en cua
@@ -67,7 +73,7 @@ Sigui $(n, c) in bb(Z)_(+)^(2)$ l'estat del sistema d'espera en un determinat in
 
 \
 #figure(
-  image("img/diagrama_transicions.jpg", width: 100%),
+  image("img/diagrama_transicions.jpg", width: 90%),
   caption: [
     Diagrama de transicions del S.E. de la parada d'autobús (exemple per $c=3$)
   ],
@@ -79,7 +85,7 @@ Observem que el fet que el temps de pujada a l'autobús sigui aproximadament nul
 
 Per tant, aquesta cadena de transicions immediates provoca que els $c$ serveis individuals s'agrupin en essencialment un únic servei en lot de $c$ usuaris, i permet ignorar la capacitat de l'autobús com a part de l'estat del sistema per considerar únicament el nombre d'usuaris a la marquesina $n$. D'aquesta forma, el sistema d'espera es simplifica a únicament les següents transicions:
 - Si $n = 0$, aleshores no hi han usuaris esperant a la marquesina, i només pot succeïr que arribi un nou usuari, i per tant $0 -> 1$.
-- Si $n > 0, n < K$, aleshores hi ha un determinat nombre d'usuaris esperant a la marquesina. Per tant pot arribar un usuari nou, $n -> n+1$, o bé pot arribar un autobús amb capacitat $c$ que recull immediatament a tants  usuaris com pot i marxa, $n -> max(0, n-c)$.
+- Si $0 < n < K$, aleshores hi ha un determinat nombre d'usuaris esperant a la marquesina. Per tant pot arribar un usuari nou, $n -> n+1$, o bé pot arribar un autobús amb capacitat $c$ que recull immediatament a tants  usuaris com pot i marxa, $n -> max(0, n-c)$.
 - Altrament, si $n = K$, la marquesina no té més capacitat i per tant no admet més usuaris. Només pot passar $K-> max(0, K-c)$ al arribar un autobús amb capacitat $c$.
 
 Finalment, observem que l'esquema de transicions definit, juntament amb els temps entre arribades exponencials tan d'usuaris com d'autobusos a la parada, impliquen que la parada d'autobús sota aquestes hipòtesis es comporta com una cua $M$/$M^([X])$/$1$/$K$, és a dir, una cua on:
@@ -91,7 +97,7 @@ Finalment, observem que l'esquema de transicions definit, juntament amb els temp
 
 \
 #figure(
-  image("img/mmx1k.jpg", width: 100%),
+  image("img/mmx1k.jpg", width: 90%),
   caption: [
     Diagrama de transicions d'una cua $M\/M^([3])\/1\/K$ (exemple)
   ],
@@ -99,12 +105,12 @@ Finalment, observem que l'esquema de transicions definit, juntament amb els temp
 )<fig:mmx1k>
 \
 
-És important insistir en que aquesta demostració es fonamenta en una sèrie de hipòtesis fetes per la preentrega d'aquest treball, i que no seran vàlides per a la entrega final ja. Una representació general del diagrama de transicions de la parada d'autobús és donada per la #ref(<fig:markov_bus>), i la per la seva simplificació #ref(<fig:mmx1k>).
+És important insistir en que aquesta demostració es fonamenta en una sèrie de hipòtesis fetes per la preentrega d'aquest treball, i que no seran vàlides per a la entrega final. Una representació general del diagrama de transicions de la parada d'autobús és donada per la #ref(<fig:markov_bus>), i per la seva simplificació #ref(<fig:mmx1k>).
 
 
 == Estat estacionari i la Llei de Little
 
-El fet que el comportament teòric del sistema d'espera de la parada d'autobús sigui equivalent a una cua $M$/$M^([X])$/$1$/$K$ ens permet resoldre les equacions del seu estat estacionari.
+El fet que el comportament teòric del sistema d'espera de la parada d'autobús sigui equivalent a una cua $M$/$M^([X])$/$1$/$K$ ens permet resoldre les equacions del seu estat estacionari de la cadena de Màrkov asssociada.
 
 Per calcular les probabilitats d'estat estacionari $P_n$, plantegem les equacions d'equilibri global de la cadena de Markov contínua. L'estructura de transicions dona lloc al sistema lineal $Q^T P = 0$ juntament amb la normalització $sum_(n=0)^K P_n = 1$ i $P_n >= 0$. D'acord amb l'enunciat de la preentrega, a partir d'ara fixem la capacitat de l'autobús com a una v.a. constant $X equiv c = 3$ i la marquesina $K = 9$. Formalment, hem de resoldre el sistema d'equacions:
 
@@ -154,11 +160,14 @@ A continuació presentem els resultats de la simulació implementada i els compa
   column-gutter: 2em, // Space between items
   [$lambda = 5$], [$mu = 4$], [$K = 9$], [$X = 3$], [$T = 10000,$]
 ))
-on $T$ és l'horitzó temporal de la simulació en unitats de temps. Resolent numèricament el sistema d'equacions globals de l'estat estacionari trobem que el valor teòric de $L$ és, aproximadament, $L approx 1.5770.$ Executem la nostra implementació amb aquests mateixos paràmetres, i generem $B=10000$ trajectòries, de forma que podem estimar L amb alta precisió proporcionant un interval de confiança al nivell $95\%$:
+on $T$ és l'horitzó temporal de la simulació en unitats de temps. Resolent numèricament el sistema d'equacions globals de l'estat estacionari trobem que el valor teòric de $L$ és, aproximadament, $L approx 1.5770.$ Executem la nostra implementació amb aquests mateixos paràmetres, i generem $B=10000$ trajectòries, de forma que podem estimar $L$ amb alta precisió proporcionant un interval de confiança al nivell $95\%$:
+$
+  hat(L) = 1.5767 plus.minus 0.000372.
+$
 
 El resultat ens permet aleshores afirmar que la implementació de la simulació és correcta.
 
-Cal destacar que la decisió d'implementar la simulació en Zig ha facilitat molt l'obtenció d'aquests resultats, ja que ha permès la simulació de $B=10000$ trajectòries en un temps més que factible, ja que el temps d'execució d'una única simulació s'ha estimat com a  $$. 
+Cal destacar que la decisió d'implementar la simulació en Zig ha facilitat molt l'obtenció d'aquests resultats, ja que ha permès la simulació de $B=10000$ trajectòries en un temps més que factible, ja que el temps d'execució d'una única simulació s'ha estimat com a $0.0058 plus.minus 0.000012$. 
 
 Concloem que aquesta primera entrega ha satisfet el seu objectiu de definir una base sòlida en quant a teoria i codi per a la posterior realització d'una simulació de la parada d'autobús amb paràmetres més complexos, com ara la capacitat d'autobús i temps d'embarcament aleatoris.
 
