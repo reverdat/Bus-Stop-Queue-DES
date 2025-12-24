@@ -3,7 +3,7 @@ zig:
   title: The Zig Programming Language
   author: Zig Software Foundation
   url: https://ziglang.org/
-  date: 2025 # Or the current year/access date
+  date: 2025
 
 heap:
   type: Book
@@ -17,3 +17,10 @@ heap:
     - Stein, Clifford
   publisher: MIT Press
   location: Cambridge, MA
+
+pydust:
+  type: Web 
+  title: ziggy-pydust
+  author: SpiralDB
+  url: https://github.com/spiraldb/ziggy-pydust
+  date: 2025
