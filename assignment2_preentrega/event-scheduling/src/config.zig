@@ -80,9 +80,9 @@ pub const SimResults = struct {
     traca: ArrayList(Event), //recordaque l'array list és un fat pointer, quan retornes això només estas copiant un punter a items i capaciy
 
     pub fn format(self: SimResults, writer: *Io.Writer) !void {
-        try writer.writeAll("+--------------------+\n");
+        try writer.writeAll("+-------------------+\n");
         try writer.print("| SIMULATION RESULT |\n", .{});
-        try writer.writeAll("+--------------------+\n");
+        try writer.writeAll("+-------------------+\n");
         try writer.print("{s: <24}: {d:.4} \n", .{ "Duration", self.duration});
         try writer.print("{s: <24}: {d} \n", .{"Events processed", self.processed_events});
         try writer.print("{s: <24}: {d:.4}\n", .{"Average Queue (L)", self.average_clients});
