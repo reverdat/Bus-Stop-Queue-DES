@@ -56,7 +56,7 @@ El sistema d'espera es tracta d'una parada d'autobús on arriben usuaris que esp
 2. *Autobús*: És l'únic servidor del sistema d'espera. Arriba en un temps aleatori a la parada i amb una capacitat aleatòria $X$. Permet començar l'embarcament dels usuaris esperant a la marquesina, els quals triguen a pujar a l'autobús un temps aleatori. El bus marxa de la parada només quan exhaureix la seva capacitat o bé quan no queden usuaris esperant a la marquesina.
 
 == Modelització en cua
-Afirmem que el sistema d'espera descrit anteriorment es pot identificar amb una cua $M$/$M^([X])$/$1$/$K$ mitjançant una serie de hipòtesis *vàlides per aquesta preentregra*. En efecte,
+El sistema d'espera descrit anteriorment es pot identificar amb una cua $M$/$M^([X])$/$1$/$K$ mitjançant una serie de hipòtesis *vàlides per aquesta preentregra*. Proporcionem una simple demostració d'aquesta afirmació que no busca ser rigorosa. En efecte,
 suposem el següent:
 1. El temps entre dues arribades d'usuaris consecutives a la marquesina $tau_(i+1) - tau_i$ és una v.a. que segueix una llei exponencial de paràmetre fix $lambda$.  
 2. El temps d'arribada d'un nou bus a la parada un cop ha marxat l'últim és una v.a. que segueix una llei exponencial de paràmetre fix $mu$.  
@@ -69,35 +69,67 @@ Sigui $(n, c) in bb(Z)_(+)^(2)$ l'estat del sistema d'espera en un determinat in
 #figure(
   image("img/diagrama_transicions.jpg", width: 100%),
   caption: [
-    Diagrama de transicions del S.E. de la parada d'autobús ($c=3$)
+    Diagrama de transicions del S.E. de la parada d'autobús (exemple per $c=3$)
   ],
   supplement: [Figura],
-)
+)<fig:markov_bus>
 \
 
 Observem que el fet que el temps de pujada a l'autobús sigui aproximadament nul implica que, un cop arriba un autobús i el sistema es troba en l'estat $(n, c)$, aleshores la pròxima transició és $(n, c) -> (n-1, c-1)$ amb probabilitat aproximadament 1, i aquesta transició succeeix casi immediatament. Aquest comportament es repeteix indefinidament fins que el sistema arriba a l'estat $(n^prime, 0)$ per algun $n^prime >= 0$. 
 
-Per tant, aquesta cadena de transicions immediates provoca que els $c$ serveis individuals s'agrupin en essencialment un únic servei en lot de $c$ usuaris. Això permet ignorar la capacitat de l'autobús com a part de l'estat del sistema i considerar únicament el nombre d'usuaris a la marquesina.
+Per tant, aquesta cadena de transicions immediates provoca que els $c$ serveis individuals s'agrupin en essencialment un únic servei en lot de $c$ usuaris, i permet ignorar la capacitat de l'autobús com a part de l'estat del sistema per considerar únicament el nombre d'usuaris a la marquesina $n$. D'aquesta forma, el sistema d'espera es simplifica a únicament les següents transicions:
+- Si $n = 0$, aleshores no hi han usuaris esperant a la marquesina, i només pot succeïr que arribi un nou usuari, i per tant $0 -> 1$.
+- Si $n > 0, n < K$, aleshores hi ha un determinat nombre d'usuaris esperant a la marquesina. Per tant pot arribar un usuari nou, $n -> n+1$, o bé pot arribar un autobús amb capacitat $c$ que recull immediatament a tants  usuaris com pot i marxa, $n -> max(0, n-c)$.
+- Altrament, si $n = K$, la marquesina no té més capacitat i per tant no admet més usuaris. Només pot passar $K-> max(0, K-c)$ al arribar un autobús amb capacitat $c$.
+
+Finalment, observem que l'esquema de transicions definit, juntament amb els temps entre arribades exponencials tan d'usuaris com d'autobusos a la parada, impliquen que la parada d'autobús sota aquestes hipòtesis es comporta com una cua $M$/$M^([X])$/$1$/$K$, és a dir, una cua on:
+
+- $M$: Temps entre arrivades exponencial.
+- $M^([X])$: Temps de servei exponencial amb taxa per _batches_ (lots) de capacitat aleatòria.
+- $1$: Un únic servidor.
+- $K$: Capacitat del sistema (finita). \u{25A1}
 
 \
 #figure(
   image("img/mmx1k.jpg", width: 100%),
   caption: [
-    Diagrama de transicions d'una cua ($M\/M^([3])\/1\/K$)
+    Diagrama de transicions d'una cua $M\/M^([3])\/1\/K$ (exemple)
   ],
   supplement: [Figura],
-)
+)<fig:mmx1k>
 \
 
-- $M$: Arribades markovianes.
-- $M^([X])$: Temps de servei exponencial amb taxa per _batches_ (lots).
-- $1$: Un servidor.
-- $K$: Capacitat del sistema (finita).
+És important insistir en que aquesta demostració es fonamenta en una sèrie de hipòtesis fetes per la preentrega d'aquest treball, i que no seran vàlides per a la entrega final ja. Una representació general del diagrama de transicions de la parada d'autobús és donada per la #ref(<fig:markov_bus>), i la per la seva simplificació #ref(<fig:mmx1k>).
 
 
-== Resolució del Sistema Manualment
+== Estat estacionari i la Llei de Little
 
-Això està escrit tot en brut a sota, entenc que la preentrega diu que això ho hem de posar, oi?
+El fet que el comportament teòric del sistema d'espera de la parada d'autobús sigui equivalent a una cua $M$/$M^([X])$/$1$/$K$ ens permet resoldre les equacions del seu estat estacionari.
+
+Per calcular les probabilitats d'estat estacionari $P_n$, plantegem les equacions d'equilibri global de la cadena de Markov contínua. L'estructura de transicions dona lloc al sistema lineal $Q^T P = 0$ juntament amb la normalització $sum_(n=0)^K P_n = 1$ i $P_n >= 0$. D'acord amb l'enunciat de la preentrega, a partir d'ara fixem la capacitat de l'autobús $X equiv c = 3$ i de la marquesina $K = 9$. Formalment, hem de resoldre el sistema d'equacions:
+
+
+\
+$
+Q = mat(
+  -lambda, lambda, 0, 0, 0, 0, 0, 0, 0, 0;
+  mu, -mu -lambda, lambda, 0, 0, 0, 0, 0, 0, 0;
+  mu, 0, -mu -lambda, lambda, 0, 0, 0, 0, 0, 0;
+  mu, 0, 0, -mu -lambda, lambda, 0, 0, 0, 0, 0;
+  0, mu, 0, 0, -mu -lambda, lambda, 0, 0, 0, 0;
+  0, 0, mu, 0, 0, -mu -lambda, lambda, 0, 0, 0;
+  0, 0, 0, mu, 0, 0, -mu -lambda, lambda, 0, 0;
+  0, 0, 0, 0, mu, 0, 0, -mu -lambda, lambda, 0;
+  0, 0, 0, 0, 0, mu, 0, 0, -mu -lambda, lambda;
+  0, 0, 0, 0, 0, 0, mu, 0, 0, -mu;
+)
+$
+
+$ Q^T P = 0 quad sum_(n=0)^K P_n = 1 quad P_n >= 0 $
+\
+Un cop obtingudes les probabilitats estacionàries $P_n$, podem calcular mesures de rendiment del sistema d'espera aplicant la Llei de Little. En particular, ens fixem en l'ocupació mitjana del sistema d'espera al llarg del temps,
+$ L = lambda W = sum_(n=0)^infinity n P_n. $
+Referir-se a l'@app:implementacions_extres per veure com resoldre el sistema computacionalment i calcular $L$ com a funció de $(lambda, mu, X, K)$.
 
 
 = Implementació
@@ -117,11 +149,23 @@ En el cas de l'_Event-Scheduling_ no hem d'accedir a un element qualsevol, sinó
 
 Aquí diem tot el que hem aconseguit.
 
-= Appendix: Ús i Execució del Codi
+#counter(heading).update(0)
+#set heading(numbering: (..nums) => {
+  let vals = nums.pos()
+  if vals.len() == 1 {
+    return "Annex " + numbering("A", ..vals)
+  } else {
+    return numbering("A.1", ..vals)
+  }
+}, supplement: none)
+
+#pagebreak()
+
+= Ús i Execució del Codi
 
 Com executem això
 
-= Appendix: Implementacions Extres
+= Implementacions Extres <app:implementacions_extres>
 
 Per entendre millor l'algorisme de l'_Event-Scheduling_, el nostre flux de treball ha necessitat de dues implementacions més primerenques a mode de prototip i de prova de concepte.
 
@@ -138,78 +182,10 @@ L'enunciat de la preentrega diu que s'han de posar aquests nombres a mà, els de
 
 == Equacions d'equilibri
 
-$ Q^T P = 0 quad sum_(i=0)^K P_i = 1 quad P_i >= 0 $
 
 Les usarem per resoldre el sistema. Volem calcular $L$, que és la longitud mitjana del sistema.
 
-$ L = lambda W = sum_(n=0)^infinity n P_n $
-#text(size: 0.9em, style: "italic")[Little's Law i definició d'esperança.]
 
-
----
-
-= Tasques
-
-== 1. Escull els paràmetres per testar el codi
-
-*Requisits:*
-- $X$ constant.
-- $floor(K/X) = 3$ (la capacitat del sistema ha de ser 3 cops el tamany del lot del servei).
-
-*Selecció:*
-Posem $X = 3$, per tant $K >= 9$.
-Diem #rect(inset: 2pt)[$K = 9$].
-
-== 2. Escolliu la taxa d'arribades i de servei
-
-- *Arribades:* $lambda = 3$ clients/hora.
-- *Serveis:* $mu = 2$ lots/hora.
-
-Ja tenim el problema ben determinat.
-
-*Diagrama d'estats (Transicions):*
-- Arribades ($lambda$): $0 -> 1 -> 2 -> ... -> 9$
-- Serveis ($mu$): El servei processa lots de 3.
-  - Transicions de retorn: $3 -> 0, 4 -> 1, ..., 9 -> 6$.
-
-*Nota sobre el procés:*
-$A = 3 "clients/hora" ->$ Procés Poisson? Temps entre arribades és exponencial, aprox 20 min entre clients.
-
----
-
-= Matriu i Resolució
-
-$mu = "lot/hora" ->$ Faig $mu$ serveis complets per hora. Temps mitjà $1/2 = 30$ min a atendre.
-
-== Definició de la Matriu $Q$
-
-Definim la matriu de transició (Generador Infinitesimal) per als estats $0$ a $9$.
-_Nota: On posa $-5$ és equivalent a $-mu - lambda$._
-
-$
-Q = mat(
-  -lambda, lambda, 0, 0, 0, 0, 0, 0, 0, 0;
-  mu, -mu -lambda, lambda, 0, 0, 0, 0, 0, 0, 0;
-  mu, 0, -mu -lambda, lambda, 0, 0, 0, 0, 0, 0;
-  mu, 0, 0, -mu -lambda, lambda, 0, 0, 0, 0, 0;
-  0, mu, 0, 0, -mu -lambda, lambda, 0, 0, 0, 0;
-  0, 0, mu, 0, 0, -mu -lambda, lambda, 0, 0, 0;
-  0, 0, 0, mu, 0, 0, -mu -lambda, lambda, 0, 0;
-  0, 0, 0, 0, mu, 0, 0, -mu -lambda, lambda, 0;
-  0, 0, 0, 0, 0, mu, 0, 0, -mu -lambda, lambda;
-  0, 0, 0, 0, 0, 0, mu, 0, 0, -mu;
-)
-$
-
-Hem de resoldre el sistema lineal següent:
-
-$
-cases(
-  Q^T P = 0,
-  sum_(i=1)^K P_i = 1,
-  P_i >= 0
-)
-$
 
 I ho hem fet a `solver/main.py`
 
