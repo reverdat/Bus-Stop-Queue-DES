@@ -150,11 +150,10 @@ const HELP =
 ;
 
 pub fn main() !void {
-    var gpa_allocator = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa_allocator.deinit();
-    const gpa = gpa_allocator.allocator();
-
-    // set up the stdout buffer
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const gpa = arena.allocator();    // set up the stdout buffer
+    
     var buffer: [1024]u8 = undefined;
     var stdout_writer = std.fs.File.stdout().writer(&buffer);
     const stdout = &stdout_writer.interface;
@@ -207,6 +206,7 @@ pub fn main() !void {
     };
 
     try stdout.print("{f}\n", .{config});
+    try stdout.print("Executing the simulation {d} times\n", .{B});
     try stdout.flush();
 
     if (B == 1) {
@@ -226,6 +226,7 @@ pub fn main() !void {
 
         const t_vals = try gpa.alloc(f64, B);
         defer gpa.free(t_vals);
+        var global_timer = try Timer.start();
 
         for (0..B) |i| {
             var timer = try Timer.start();
@@ -238,6 +239,13 @@ pub fn main() !void {
 
             L_vals[i] = results.average_clients;
             t_vals[i] = seconds;
+
+            if (i%100 == 0) {
+                const checkpoint = global_timer.read();
+                const checkpoint_seconds = @as(f64, @floatFromInt(checkpoint)) / 1_000_000_000.0;
+                try stdout.print("Done {d}/{d} iterations. Time Elapsed {d:.4}s.\n", .{i, B, checkpoint_seconds});
+                try stdout.flush();
+            }
         }
 
         const Stats = struct { mean: f64, ci: f64 };
@@ -263,15 +271,16 @@ pub fn main() !void {
             }
         }.run;
 
+        const total_time =  @as(f64, @floatFromInt(global_timer.read())) /  1_000_000_000.0;
         const l_stats = calculate_stats(L_vals);
         const t_stats = calculate_stats(t_vals);
 
-        try stdout.writeAll("\n+-------------------+\n");
-        try stdout.print("| BATCH RESULTS (B={d})|\n", .{B});
-        try stdout.writeAll("+-------------------+\n");
+        try stdout.writeAll("\n+----------------------+\n");
+        try stdout.print("| BATCH RESULTS (B={d}) |\n", .{B});
+        try stdout.writeAll("+----------------------+\n");
         try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Duration (s)", t_stats.mean, t_stats.ci });
         try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Queue (L)", l_stats.mean, l_stats.ci });
-
+        try stdout.print("Total Time Elapsed: {d:.4}s\n", .{total_time});
         try stdout.flush();
     }
 }
