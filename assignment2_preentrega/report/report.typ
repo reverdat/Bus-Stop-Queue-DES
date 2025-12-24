@@ -106,7 +106,7 @@ Finalment, observem que l'esquema de transicions definit, juntament amb els temp
 
 El fet que el comportament teòric del sistema d'espera de la parada d'autobús sigui equivalent a una cua $M$/$M^([X])$/$1$/$K$ ens permet resoldre les equacions del seu estat estacionari.
 
-Per calcular les probabilitats d'estat estacionari $P_n$, plantegem les equacions d'equilibri global de la cadena de Markov contínua. L'estructura de transicions dona lloc al sistema lineal $Q^T P = 0$ juntament amb la normalització $sum_(n=0)^K P_n = 1$ i $P_n >= 0$. D'acord amb l'enunciat de la preentrega, a partir d'ara fixem la capacitat de l'autobús $X equiv c = 3$ i de la marquesina $K = 9$. Formalment, hem de resoldre el sistema d'equacions:
+Per calcular les probabilitats d'estat estacionari $P_n$, plantegem les equacions d'equilibri global de la cadena de Markov contínua. L'estructura de transicions dona lloc al sistema lineal $Q^T P = 0$ juntament amb la normalització $sum_(n=0)^K P_n = 1$ i $P_n >= 0$. D'acord amb l'enunciat de la preentrega, a partir d'ara fixem la capacitat de l'autobús com a una v.a. constant $X equiv c = 3$ i la marquesina $K = 9$. Formalment, hem de resoldre el sistema d'equacions:
 
 
 \
@@ -129,6 +129,7 @@ $ Q^T P = 0 quad sum_(n=0)^K P_n = 1 quad P_n >= 0 $
 \
 Un cop obtingudes les probabilitats estacionàries $P_n$, podem calcular mesures de rendiment del sistema d'espera aplicant la Llei de Little. En particular, ens fixem en l'ocupació mitjana del sistema d'espera al llarg del temps,
 $ L = lambda W = sum_(n=0)^infinity n P_n. $
+Prendrem aquest valor teòric com a mètrica de referència per verificar la correcta implementació de la simulació.
 Referir-se a l'@app:implementacions_extres per veure com resoldre el sistema computacionalment i calcular $L$ com a funció de $(lambda, mu, X, K)$.
 
 
@@ -145,9 +146,21 @@ Sobre la implementació, la primera consideració és descartar l'ús d'una arra
 En el cas de l'_Event-Scheduling_ no hem d'accedir a un element qualsevol, sinó que només hem d'accedir al primer element. Per tant, hem emprat una implementació de l'estructura Heap @heap, que guarda els elements sense ordre, però garanteix que el primer element de la estructura sempre serà el de menor temps, donant-nos un accés de $O(1)$. En comparació amb la llista, també guanyem en inserció, ja que un heap té un cost d'accés de $O(log_2(n))$ al usar una estructura d'arbre binari per emmagatzemar les dades. El heap és la millor estructura per aquest problema, ja que els requeriments que tenim són als d'accedir al mínim element el més ràpid possible, sense necessitat de en un moment qualsevol cercar un element qualsevol.
 
 
-= Conclusions
+= Resultats i conclusions
+A continuació presentem els resultats de la simulació implementada i els comparem als valors teòrics. Fixem els paràmetres 
+#align(center, table(
+  columns: 5,
+  stroke: none,
+  column-gutter: 2em, // Space between items
+  [$lambda = 5$], [$mu = 4$], [$K = 9$], [$X = 3$], [$T = 10000,$]
+))
+on $T$ és l'horitzó temporal de la simulació en unitats de temps. Resolent numèricament el sistema d'equacions globals de l'estat estacionari trobem que el valor teòric de $L$ és, aproximadament, $L approx 1.5770.$ Executem la nostra implementació amb aquests mateixos paràmetres, i generem $B=10000$ trajectòries, de forma que podem estimar L amb alta precisió proporcionant un interval de confiança al nivell $95\%$:
 
-Aquí diem tot el que hem aconseguit.
+El resultat ens permet aleshores afirmar que la implementació de la simulació és correcta.
+
+Cal destacar que la decisió d'implementar la simulació en Zig ha facilitat molt l'obtenció d'aquests resultats, ja que ha permès la simulació de $B=10000$ trajectòries en un temps més que factible, ja que el temps d'execució d'una única simulació s'ha estimat com a  $$. 
+
+Concloem que aquesta primera entrega ha satisfet el seu objectiu de definir una base sòlida en quant a teoria i codi per a la posterior realització d'una simulació de la parada d'autobús amb paràmetres més complexos, com ara la capacitat d'autobús i temps d'embarcament aleatoris.
 
 #counter(heading).update(0)
 #set heading(numbering: (..nums) => {
@@ -174,20 +187,6 @@ El primer pas va ser reimplementar el codi d'exemple d'una cua $M\/M\/1$ en Pyth
 Seguidament, per confirmar que erem capaços d'implementar Zig amb prou soltura, varem traduïr la implementació del `mm1.py` a Zig. Aquest fitxer també es pot trobar a `mm1.zig`.
 
 Com a detall extra, vàrem comentar de paraula que entregariem una llibreria de python amb l'algorisme compilat. Malauradament, això no ha estat possible per problemes tècnics que van més enllà de l'abast de la pràctica i dels nostres coneixements. Per poder empaquetar el binari de Zig en una llibreria de Python, s'ha intentat usar `Ziggy-Pydust`, una llibreria que genera totes les dependències extres per a poder cridar el binari des de Python. Amb poc intents i seguint la documentació, hem aconseguit que funcioni perfectament per a Linux, però la llibreria és massa jove com per a tenir support per a Windows, per això vam haver de desestimar la iniciativa i entregar un binari directament.
-
-= Notes sobre la resolució del sistema M/M^[X]/1/K
-L'enunciat de la preentrega diu que s'han de posar aquests nombres a mà, els deixo al final intentant posar-ho a lloc.
-
-*Estat estacionari:* Les probabilitats no canvien durant segons el temps $t$, ergo $P_n$ és fix.
-
-== Equacions d'equilibri
-
-
-Les usarem per resoldre el sistema. Volem calcular $L$, que és la longitud mitjana del sistema.
-
-
-
-I ho hem fet a `solver/main.py`
 
 
 #bibliography("works.yml")
