@@ -78,7 +78,6 @@ pub const SimResults = struct {
     average_clients: f64,
     lost_passengers: u64,
     processed_events: u64,
-    traca: ?ArrayList(Event), //recordaque l'array list és un fat pointer, quan retornes això només estas copiant un punter a items i capaciy
 
     pub fn format(self: SimResults, writer: *Io.Writer) !void {
         try writer.writeAll("+-------------------+\n");

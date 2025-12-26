@@ -49,17 +49,29 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
     const t_b = try config.bus_interarrival.sample(random);
     event_id_counter += 1;
     try hp.push(gpa, Event{ .time = t_b, .type = .service, .id = event_id_counter });
-
-    // guardem els passatjers amb quan arriben a la parada, quan marxen i la diferència
-    // guardem l'ordre de tots els esdeveniments que han passat
-    var traca: ?ArrayList(Event) = null; 
-    if (config.save_traca) {traca = .empty;}
+    
+    // manage the traca file opening
+    var file_writer: *std.Io.Writer = undefined;
+    var traca_file: std.fs.File = undefined;
+    
+    if (config.save_traca) {
+        var file_buffer: [64 * 1024]u8 = undefined; 
+        traca_file = try std.fs.cwd().createFile("traca.txt", .{ .read = false });
+        var traca_writer = traca_file.writer(&file_buffer);
+        file_writer  = &traca_writer.interface;
+    }
 
     while (t_clock <= config.horizon and hp.len() > 0) : (processed_events += 1) {
-        const next_event = hp.pop().?; // we use ? because we are pretty sure that cannot fail
+        const next_event = hp.pop().?; // we use ? because we are absolutely sure there will be an element
         t_clock = next_event.time;
-        if (config.save_traca) {try traca.?.append(gpa, next_event);}
-
+        if (config.save_traca) {
+            try file_writer.print("Estat {d}: ({d},{d}); t={d:.4}\n", .{
+                processed_events, 
+                num_passengers_queue, 
+                current_bus_capacity, 
+                t_clock
+            });
+        }
         const deltat = t_clock - last_event_time;
 
         // L_q = num_passengers_queue
@@ -125,13 +137,17 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
             },
         }
     }
+    
+    if (config.save_traca) {
+        try file_writer.flush(); // Don't forget to flush! :)
+        traca_file.close();
+    }    
 
     return SimResults{
         .average_clients = area_queue / t_clock,
         .duration = t_clock,
         .lost_passengers = lost_passengers,
         .processed_events = processed_events,
-        .traca = traca,
     };
 }
 
@@ -214,9 +230,8 @@ pub fn main() !void {
         try stdout.flush();
 
         var timer = try Timer.start();
-        var results = try eventSchedulingBus(gpa, rng, config);
+        const results = try eventSchedulingBus(gpa, rng, config);
         
-        if (config.save_traca) {defer results.traca.?.deinit(gpa);}
         const end = timer.read();
 
         const seconds = @as(f64, @floatFromInt(end)) / 1_000_000_000.0;
