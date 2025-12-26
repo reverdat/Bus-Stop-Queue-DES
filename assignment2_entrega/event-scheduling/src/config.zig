@@ -51,6 +51,7 @@ pub const SimConfig = struct {
     boarding_time: Distribution,            // distribució que segueix el temps de pujada d'un passatjer al bus
     system_capacity: u64,                   // sempre serà un nombre
     horizon: f64,                           // temps que dura la simulació
+    save_traca: bool = false,               // guardar o no la traca a un fitxer
                   
     pub fn format(
         self: SimConfig,
@@ -77,7 +78,7 @@ pub const SimResults = struct {
     average_clients: f64,
     lost_passengers: u64,
     processed_events: u64,
-    traca: ArrayList(Event), //recordaque l'array list és un fat pointer, quan retornes això només estas copiant un punter a items i capaciy
+    traca: ?ArrayList(Event), //recordaque l'array list és un fat pointer, quan retornes això només estas copiant un punter a items i capaciy
 
     pub fn format(self: SimResults, writer: *Io.Writer) !void {
         try writer.writeAll("+-------------------+\n");
@@ -91,11 +92,11 @@ pub const SimResults = struct {
 };
 
 
-const Stats = struct {
+pub const Stats = struct {
     mean: f64,
     ci: f64,
 
-    fn calculateFromData(data: []f64) Stats {
+    pub fn calculateFromData(data: []f64) Stats {
         var sum: f64 = 0.0;
         for (data) |v| sum += v;
         const mean = sum / @as(f64, @floatFromInt(data.len));

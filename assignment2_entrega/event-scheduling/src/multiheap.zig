@@ -1,31 +1,19 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 const Allocator = std.mem.Allocator;
-const swap = std.mem.swap;
+const swap = std.mem.swap; // We will use this for the primitive swaps
 
-/// Implementació d'un MinHeap molt rudimentaria, però
-/// absolutament eficient.
-///
-/// - push: afegeix un valor al heap
-/// - pop: elimina el minim del min heap
-/// - peek: mostra quin és el menor valor al heap
-pub fn Heap(
-    comptime T: type,
-) type {
+pub fn Heap(comptime T: type) type {
     const type_info = @typeInfo(T);
     if (type_info != .@"struct") @compileError("Just structs allowed.\n");
-
     if (!@hasField(T, "time")) @compileError("No comparison key 'time' found\n");
 
     return struct {
         const Self = @This();
-
         list: std.MultiArrayList(T),
 
         pub fn init() Self {
-            return Self{
-                .list = .empty,
-            };
+            return Self{ .list = .empty };
         }
 
         pub fn deinit(self: *Self, allocator: Allocator) void {
@@ -49,65 +37,107 @@ pub fn Heap(
             return 2 * i + 2;
         }
 
-        pub fn push(self: *Self, gpa: Allocator, value: T) !void {
-            try self.list.append(gpa, value);
-            var child_index: usize = self.list.len - 1;
-            var parent_index: usize = getParentIndex(child_index);
-            
-            //const slice = self.list.slice;
-            const times = self.list.items(.time); // això és un "punter" als items time
-            while (times[child_index] < times[parent_index]) {
-                const temp = self.list.get(child_index);
-                self.list.set(child_index, self.list.get(parent_index));
-                self.list.set(parent_index, temp);
-                child_index = parent_index;
-                parent_index = getParentIndex(child_index);
+        // --- THE NEW HELPER FUNCTION ---
+        // This generates optimized code to swap specific indices in EVERY array.
+        fn swapItems(self: *Self, a: usize, b: usize) void {
+            const slice = self.list.slice();
+            // We iterate over every field in the struct T (time, type, id)
+            inline for (std.meta.fields(T)) |field_info| {
+                // 1. Get the enum for this field (required by MultiArrayList)
+                const f_enum = @field(std.MultiArrayList(T).Field, field_info.name);
+                
+                // 2. Get the specific array for this field (e.g., just the IDs)
+                const array = slice.items(f_enum);
+                
+                // 3. Swap just these two values directly in memory
+                swap(field_info.type, &array[a], &array[b]);
             }
-
-            return;
         }
 
-        pub fn pop(self: *Self) ?T {
-            if (self.list.len == 0) return null;
+     pub fn push(self: *Self, gpa: Allocator, value: T) !void {
+        try self.list.append(gpa, value);
+        var child_index: usize = self.list.len - 1;
 
-            const min = self.list.get(0);
-            self.list.swapRemove(0);
+        // 1. Save the NEW item's fields to stack variables (The "Floating" Item)
+        // We can use a temp struct, or just variables if we want to be explicit.
+        const new_item = value; 
 
-            if (self.list.len == 0) return min;
+        const times = self.list.items(.time);
+        // We need the slice for the other fields too to shift them efficiently
+        // Assuming your Event struct has: time, type, id
+        const types = self.list.items(.type);
+        const ids = self.list.items(.id);
 
-            var parent_index: usize = 0;
+        while (child_index > 0) {
+            const parent_index = getParentIndex(child_index);
+            const parent_time = times[parent_index];
 
-            while (true) {
-                const lchild_index = getLeftChildIndex(parent_index);
-                const rchild_index = getRightChildIndex(parent_index);
+            // Compare against our floating item's time
+            if (new_item.time >= parent_time) break;
 
-                var smallest_index = parent_index; // assume parent_index is the smallest
+            // Instead of swapping, we just overwrite the child slot with the parent's data
+            times[child_index] = times[parent_index];
+            types[child_index] = types[parent_index];
+            ids[child_index]   = ids[parent_index];
 
-                if (lchild_index < self.list.len and self.list.get(lchild_index).time < self.list.get(smallest_index).time) {
-                    smallest_index = lchild_index;
-                }
-
-                if (rchild_index < self.list.len and self.list.get(rchild_index).time < self.list.get(smallest_index).time) {
-                    smallest_index = rchild_index;
-                }
-
-                if (smallest_index == parent_index) {
-                    break;
-                }
-
-                const temp = self.list.get(parent_index);
-                self.list.set(parent_index, self.list.get(smallest_index));
-                self.list.set(smallest_index, temp);
-
-                parent_index = smallest_index;
-            }
-
-            return min;
+            child_index = parent_index;
         }
 
-        pub fn peek(self: *Self) ?T {
+        times[child_index] = new_item.time;
+        types[child_index] = new_item.type;
+        ids[child_index]   = new_item.id;
+    }        
+
+    pub fn pop(self: *Self) ?T {
+        if (self.list.len == 0) return null;
+
+        const min = self.list.get(0);
+
+        const last_val = self.list.pop().?;
+
+        if (self.list.len == 0) return min;
+
+        var parent_index: usize = 0;
+        const slice = self.list.slice();
+        
+        const times = slice.items(.time);
+        const half_len = self.list.len / 2;
+
+        while (parent_index < half_len) {
+            var child_index = getLeftChildIndex(parent_index);
+            const right_index = getRightChildIndex(parent_index);
+
+            // Find the smaller child
+            if (right_index < self.list.len and 
+                times[right_index] < times[child_index]) 
+            {
+                child_index = right_index;
+            }
+
+            if (last_val.time <= times[child_index]) break;
+
+            // We write the child's values into the parent's slot (the current hole)
+            inline for (std.meta.fields(T)) |field_info| {
+                const f_enum = @field(std.MultiArrayList(T).Field, field_info.name);
+                const array = slice.items(f_enum);
+                array[parent_index] = array[child_index];
+            }
+
+            parent_index = child_index;
+        }
+
+        inline for (std.meta.fields(T)) |field_info| {
+            const f_enum = @field(std.MultiArrayList(T).Field, field_info.name);
+            const array = slice.items(f_enum);
+            array[parent_index] = @field(last_val, field_info.name);
+        }
+
+        return min;
+    }
+ 
+    pub fn peek(self: *Self) ?T {
             if (self.list.len == 0) return null;
-            return self.list.items[0];
+            return self.list.get(0);
         }
     };
 }

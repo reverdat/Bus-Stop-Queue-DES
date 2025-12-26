@@ -48,8 +48,31 @@ pub fn Heap(
         fn getRightChildIndex(i: usize) usize {
             return 2 * i + 2;
         }
-
+        
         pub fn push(self: *Self, gpa: Allocator, value: T) !void {
+            try self.list.append(gpa, value); // Adds to end, but we might overwrite it immediately
+            var child_index: usize = self.list.items.len - 1;
+            
+            // Optimization: Store the value we are bubbling up
+            const new_item = self.list.items[child_index]; 
+            const new_time = new_item.time;
+
+            while (child_index > 0) {
+                const parent_index = getParentIndex(child_index);
+                const parent_item = self.list.items[parent_index];
+
+                if (new_time >= parent_item.time) break;
+
+                // Shift parent down into the child's spot
+                self.list.items[child_index] = parent_item;
+                child_index = parent_index;
+            }
+            
+            // Place our item in its final home
+            self.list.items[child_index] = new_item;
+        }
+
+        pub fn old_push(self: *Self, gpa: Allocator, value: T) !void {
             try self.list.append(gpa, value);
             var child_index: usize = self.list.items.len - 1;
             var parent_index: usize = getParentIndex(child_index);
@@ -63,7 +86,7 @@ pub fn Heap(
             return;
         }
 
-        pub fn pop(self: *Self) ?T {
+        pub fn old_pop(self: *Self) ?T {
             if (self.list.items.len == 0) return null;
 
             const min = self.list.swapRemove(0);
@@ -95,6 +118,45 @@ pub fn Heap(
 
                 parent_index = smallest_index;
             }
+
+            return min;
+        }
+
+        pub fn pop(self: *Self) ?T {
+            if (self.list.items.len == 0) return null;
+
+            const min = self.list.items[0];
+
+            const last_item = self.list.pop().?; // Removes from end. will be non empty, 
+            
+            if (self.list.items.len == 0) return min;
+
+            // the "Hole" optimization starts at the root (index 0)
+            var parent_index: usize = 0;
+            const half_len = self.list.items.len / 2; // only check parents
+
+            while (parent_index < half_len) {
+                var child_index = getLeftChildIndex(parent_index);
+                const right_index = getRightChildIndex(parent_index);
+
+                // Find the smaller child
+                if (right_index < self.list.items.len and 
+                    self.list.items[right_index].time < self.list.items[child_index].time) 
+                {
+                    child_index = right_index;
+                }
+
+                // If the last_item fits here (is smaller than the smallest child), we stop.
+                if (last_item.time <= self.list.items[child_index].time) break;
+
+                // Otherwise, move the child UP into the hole
+                self.list.items[parent_index] = self.list.items[child_index];
+                
+                // The hole moves down to the child's spot
+                parent_index = child_index;
+            }
+
+            self.list.items[parent_index] = last_item;
 
             return min;
         }

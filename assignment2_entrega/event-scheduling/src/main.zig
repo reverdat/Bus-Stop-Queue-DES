@@ -52,12 +52,13 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
 
     // guardem els passatjers amb quan arriben a la parada, quan marxen i la diferència
     // guardem l'ordre de tots els esdeveniments que han passat
-    var traca: ArrayList(Event) = .empty;
+    var traca: ?ArrayList(Event) = null; 
+    if (config.save_traca) {traca = .empty;}
 
     while (t_clock <= config.horizon and hp.len() > 0) : (processed_events += 1) {
         const next_event = hp.pop().?; // we use ? because we are pretty sure that cannot fail
         t_clock = next_event.time;
-        try traca.append(gpa, next_event);
+        if (config.save_traca) {try traca.?.append(gpa, next_event);}
 
         const deltat = t_clock - last_event_time;
 
@@ -193,27 +194,29 @@ pub fn main() !void {
     const lambda = try std.fmt.parseFloat(f64, args[1]);
     const mu = try std.fmt.parseFloat(f64, args[2]);
     const x = try std.fmt.parseFloat(f64, args[3]);
-    const k = try std.fmt.parseInt(u64, args[4], 10);
+    const k = if (std.mem.eql(u8, args[4], "inf")) std.math.maxInt(u64) else try std.fmt.parseInt(u64, args[4], 10);
     const horizon = try std.fmt.parseFloat(f64, args[5]);
     const B = try std.fmt.parseInt(usize, args[6], 10);
 
-    const config = SimConfig{
-        .horizon = horizon,
-        .passenger_interarrival = Distribution{ .exponential = lambda }, // lambda
-        .bus_interarrival = Distribution{ .exponential = mu }, // mu
-        .bus_capacity = Distribution{ .constant = x }, // X
-        .boarding_time = Distribution{ .constant = 1e-16 }, // minim perque no importa
-        .system_capacity = k, // K
-    };
-
-    try stdout.print("{f}\n", .{config});
-    try stdout.print("Executing the simulation {d} times\n", .{B});
-    try stdout.flush();
-
     if (B == 1) {
+        const config = SimConfig{
+            .horizon = horizon,
+            .passenger_interarrival = Distribution{ .exponential = lambda }, // lambda
+            .bus_interarrival = Distribution{ .exponential = mu }, // mu
+            .bus_capacity = Distribution{ .constant = x }, // X
+            .boarding_time = Distribution{ .constant = 1e-16 }, // minim perque no importa
+            .system_capacity = k, // K
+            .save_traca = true,
+        };
+
+        try stdout.print("{f}\n", .{config});
+        try stdout.print("Executing the simulation {d} times\n", .{B});
+        try stdout.flush();
+
         var timer = try Timer.start();
         var results = try eventSchedulingBus(gpa, rng, config);
-        defer results.traca.deinit(gpa);
+        
+        if (config.save_traca) {defer results.traca.?.deinit(gpa);}
         const end = timer.read();
 
         const seconds = @as(f64, @floatFromInt(end)) / 1_000_000_000.0;
@@ -222,6 +225,21 @@ pub fn main() !void {
         try stdout.print("Time Elapsed: {d:.4} seconds\n", .{seconds});
         try stdout.flush();
     } else {
+        const config = SimConfig{
+            .horizon = horizon,
+            .passenger_interarrival = Distribution{ .exponential = lambda }, // lambda
+            .bus_interarrival = Distribution{ .exponential = mu }, // mu
+            .bus_capacity = Distribution{ .constant = x }, // X
+            .boarding_time = Distribution{ .constant = 1e-16 }, // minim perque no importa
+            .system_capacity = k, // K
+            .save_traca = false,
+        };
+
+        try stdout.print("{f}\n", .{config});
+        try stdout.print("Executing the simulation {d} times\n", .{B});
+        try stdout.flush();
+
+
         const L_vals = try gpa.alloc(f64, B);
         defer gpa.free(L_vals);
 
@@ -232,8 +250,7 @@ pub fn main() !void {
         for (0..B) |i| {
             var timer = try Timer.start();
 
-            var results = try eventSchedulingBus(gpa, rng, config);
-            defer results.traca.deinit(gpa);
+            const results = try eventSchedulingBus(gpa, rng, config);
 
             const end = timer.read();
             const seconds = @as(f64, @floatFromInt(end)) / 1_000_000_000.0;
@@ -249,12 +266,10 @@ pub fn main() !void {
             }
         }
 
-        const calculate_stats = config.Stats.calculateFromData()
-
         const total_time = @as(f64, @floatFromInt(global_timer.read())) /  1_000_000_000.0;
         const l_stats: Stats = Stats.calculateFromData(L_vals);
         const t_stats: Stats = Stats.calculateFromData(t_vals);
-
+        
         try stdout.writeAll("\n+----------------------+\n");
         try stdout.print("| BATCH RESULTS (B={d}) |\n", .{B});
         try stdout.writeAll("+----------------------+\n");
