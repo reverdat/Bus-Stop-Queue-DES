@@ -8,7 +8,6 @@ const Event = main.Event;
 const sampling = @import("rng.zig");
 
 /// Okay, aquí estaria la màgia...
-/// TODO EXPLICAR BÉ
 /// En essència la unió només conté una de les tres quan s'inicialitza
 pub const Distribution = union(enum) {
     constant: f64,
@@ -77,7 +76,9 @@ pub const SimResults = struct {
     duration: f64,
     average_clients: f64,
     lost_passengers: u64,
+    lost_buses: u64,
     processed_events: u64,
+    average_queue_clients: f64,
 
     pub fn format(self: SimResults, writer: *Io.Writer) !void {
         try writer.writeAll("+-------------------+\n");
@@ -86,7 +87,9 @@ pub const SimResults = struct {
         try writer.print("{s: <24}: {d:.4} \n", .{ "Duration", self.duration});
         try writer.print("{s: <24}: {d} \n", .{"Events processed", self.processed_events});
         try writer.print("{s: <24}: {d:.4}\n", .{"Average Queue (L)", self.average_clients});
+        try writer.print("{s: <24}: {d:.4}\n", .{"Average Queue (L_q)", self.average_queue_clients});
         try writer.print("{s: <24}: {d}\n", .{"Lost passengers", self.lost_passengers});
+        try writer.print("{s: <24}: {d}\n", .{"Lost buses", self.lost_buses});
     }
 };
 
