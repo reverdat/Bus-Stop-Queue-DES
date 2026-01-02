@@ -51,6 +51,7 @@ pub const SimConfig = struct {
     system_capacity: u64,                   // sempre serà un nombre
     horizon: f64,                           // temps que dura la simulació
     save_traca: bool = false,               // guardar o no la traca a un fitxer
+    save_usertimes: bool = false,           // guardar o no els temps d'usuari
                   
     pub fn format(
         self: SimConfig,
@@ -75,6 +76,7 @@ pub const SimConfig = struct {
 pub const SimResults = struct {
     duration: f64,
     average_clients: f64,
+    variance: f64,
     lost_passengers: u64,
     lost_buses: u64,
     processed_events: u64,
@@ -88,6 +90,7 @@ pub const SimResults = struct {
         try writer.print("{s: <24}: {d} \n", .{"Events processed", self.processed_events});
         try writer.print("{s: <24}: {d:.4}\n", .{"Average Queue (L)", self.average_clients});
         try writer.print("{s: <24}: {d:.4}\n", .{"Average Queue (L_q)", self.average_queue_clients});
+        try writer.print("{s: <24}: {d:.4}\n", .{"Variance (Var)", self.variance});
         try writer.print("{s: <24}: {d}\n", .{"Lost passengers", self.lost_passengers});
         try writer.print("{s: <24}: {d}\n", .{"Lost buses", self.lost_buses});
     }
@@ -115,5 +118,50 @@ pub const Stats = struct {
         const margin_error = 1.96 * (std_dev / std.math.sqrt(@as(f64, @floatFromInt(data.len))));
 
         return Stats{ .mean = mean, .ci = margin_error };
+    }
+};
+
+
+pub const User = struct {
+    id: u64,
+    arrival: f64,
+    about_to_board: ?f64 = null,    // Estic apunt de pujar!
+    boarded: ?f64 = null,           // He pujat i de fet estic assegut al bus (he tret l'Steam Deck per jugar, Sekiro en particular)!
+    departure: ?f64 = null,         // Marxo amb els meus companys que me'ls estimo moltíssim!
+    boarding_time: ?f64 = null,     // Temps que trigo a pujar a l'autobus
+    queue_time: ?f64 = null,        // w_q: arrival + for (gent davant meu de la cua) boarding_time
+    enqueued_time: ?f64 = null,     // queue_time + boarding_time (això és només perque la definició de l'esteve està terrible)
+    service_time: ?f64 = null,      // w_s: temps que estàs dins  // w: suma de les dues anteriosde l'autobus
+    total_time: ?f64 = null,        // w: suma de les dues anterios
+
+    pub fn format(
+        self: @This(),
+        writer: *std.Io.Writer,
+    ) std.Io.Writer.Error!void {
+        try writer.print("User {d}\n", .{self.id});
+        try writer.print("{s} at {f}\n", .{"Arrived", self.arrival});
+
+        if (self.about_to_board) |atb| {
+            try writer.print("{s} at {f}\n", .{"About to board", atb});
+        } else {
+            try writer.writerAll("User did not arrived at the first spot at the queue\n");
+            return;
+        }
+        
+        if (self.boarded) |b| {
+            try writer.print("{s} at {f}\n", .{"Boarded", b});
+        } else {
+            try writer.writerAll("User did not board the bus\n");
+            return;
+        }
+        
+        if (self.departure) |dep| {
+            try writer.print("{s} at {f}\n",  .{"Departure", dep});
+        } else {
+            try writer.writerAll("User did not get served.\n");
+            return;
+        }
+
+        return;
     }
 };

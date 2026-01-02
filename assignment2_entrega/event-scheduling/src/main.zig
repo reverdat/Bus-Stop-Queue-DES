@@ -1,5 +1,6 @@
 const std = @import("std");
 
+const json = std.json;
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const Random = std.Random;
@@ -13,6 +14,7 @@ const Distribution = structs.Distribution;
 const SimResults = structs.SimResults;
 const SimConfig = structs.SimConfig;
 const Stats = structs.Stats;
+const User = structs.User;
 
 const EventType = enum { arrival, service, boarding };
 
@@ -22,42 +24,6 @@ pub const Event = struct {
     id: u64,
 };
 
-const User = struct {
-    id: u64,
-    arrival: f64,
-    about_to_board: ?f64 = null, // Estic apunt de pujar!
-    boarded: ?f64 = null, // He pujat i de fet estic assegut al bus (he tret l'Steam Deck per jugar, Sekiro en particular)!
-    departure: ?f64 = null, // Marxo amb els meus companys que me'ls estimo moltíssim!
-    boarding_time: ?f64 = null,
-    queue_time: ?f64 = null, // w_q: arrival + for (gent davant meu de la cua) boarding_time
-    service_time: ?f64 = null, // w_s: temps que estàs dins  // w: suma de les dues anteriosde l'autobus
-    total_time: ?f64 = null, // w: suma de les dues anterios
-
-    pub fn format(
-        self: @This(),
-        writer: *std.Io.Writer,
-    ) std.Io.Writer.Error!void {
-        try writer.print(
-            \\User{{
-            \\  arrival: {d:.3},
-            \\  about_to_board: {?d:.3},
-            \\  boarded: {?d:.3},
-            \\  departure: {?d:.3},
-            \\  queue_time: {?d:.3},
-            \\  service_time: {?d:.3},
-            \\  system_time: {?d:.3}
-            \\}}
-        , .{
-            self.arrival,
-            self.about_to_board,
-            self.boarded,
-            self.departure,
-            self.queue_time,
-            self.service_time,
-            self.system_time,
-        });
-    }
-};
 
 pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !SimResults {
     var hp = heap.Heap(Event).init();
@@ -74,9 +40,12 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
     var realized_bus_capacity: u64 = 0.0;
    
     var boarding_active: bool = false;
-
+    
+    // stats
     var area_queue: f64 = 0.0;
     var area_system: f64 = 0.0;
+    var area_sq: f64 = 0.0;
+
     var last_event_time: f64 = 0.0;
     var event_id_counter: u64 = 0;
     
@@ -91,6 +60,7 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
     try hp.push(gpa, Event{ .time = t_b, .type = .service, .id = event_id_counter });
    
     var bus_stop: ArrayList(User) = .empty;
+    defer bus_stop.deinit(gpa);
     var first_user_in_queue: usize = 0;
     
     // manage the traca file opening
@@ -104,6 +74,8 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
         file_writer  = &traca_writer.interface;
     }
     
+    // manage the traca file opening
+        
     var current_bus_arrival: f64 = 0.0;
     var acc_boarding: f64 = 0.0;
 
@@ -121,12 +93,11 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
         }
         const deltat = t_clock - last_event_time;
 
-        // L_q = num_passengers_queue
-        area_queue += @as(f64, @floatFromInt(num_passengers_queue)) * deltat;
-        
         const people_on_bus = realized_bus_capacity - current_bus_capacity;
         const system_size = num_passengers_queue + people_on_bus;
-        area_system += @as(f64, @floatFromInt(system_size)) * deltat;
+        area_queue += @as(f64, @floatFromInt(num_passengers_queue)) * deltat;   // n_j (t_j - t_i)
+        area_system += @as(f64, @floatFromInt(system_size)) * deltat;           // L
+        area_sq += @as(f64, @floatFromInt(system_size*system_size))*deltat;     // n_j**2 (t_j - t_i)
         
 
         switch (next_event.type) {
@@ -155,11 +126,9 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
                 const time_bus = try config.bus_interarrival.sample(random);
                 
                 if (boarding_active) {
-                    std.debug.print("QUE SI QUE HO PUJOOOO!\n", .{});
                     lost_buses += 1;
                     event_id_counter += 1;
                     try hp.push(gpa, Event{ .time = t_clock + time_bus, .type = .service, .id = event_id_counter });
-                    
                 } else {
                     // com que no hi ha cap bus, genero la capacitat d'aquest
                     realized_bus_capacity = try config.bus_capacity.sampleInt(random);
@@ -190,6 +159,7 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
                     acc_boarding += leaving_user.*.boarding_time.?;
                     
                     leaving_user.*.queue_time = leaving_user.*.about_to_board.? - leaving_user.*.arrival;
+                    leaving_user.*.enqueued_time = leaving_user.*.queue_time.? + leaving_user.*.boarding_time.?;
 
                     first_user_in_queue += 1;
                     
@@ -232,10 +202,25 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
     if (config.save_traca) {
         try file_writer.flush(); // Don't forget to flush! :)
         traca_file.close();
-    }    
+    }
+    
+    // WAIT, this won't scale if you are too ambitious and run out of heap memory lol
+    // as well as slowing down the function a lot!
+    if (config.save_usertimes) {
+        var usertimes_buffer: [64 * 1024]u8 = undefined; 
+        const user_file = try std.fs.cwd().createFile("usertime.json", .{ .read = false });
+        defer user_file.close();
+       
+        var usertime_writer = user_file.writer(&usertimes_buffer);
+        var user_writer  = &usertime_writer.interface;
+        try std.json.Stringify.value(bus_stop.items, .{ .whitespace = .indent_2 }, user_writer);
+        try user_writer.flush();
+    }
 
+    const L = area_system / t_clock;
     return SimResults{
         .average_clients = area_system / t_clock,
+        .variance = (area_sq / t_clock) - L*L,
         .duration = t_clock,
         .lost_passengers = lost_passengers,
         .lost_buses = lost_buses,
@@ -316,6 +301,7 @@ pub fn main() !void {
             .boarding_time = Distribution{ .constant = 1e-16 }, // minim perque no importa
             .system_capacity = k, // K
             .save_traca = true,
+            .save_usertimes = true,
         };
 
         try stdout.print("{f}\n", .{config});
