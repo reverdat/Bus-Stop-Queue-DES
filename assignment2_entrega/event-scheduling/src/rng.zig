@@ -40,6 +40,45 @@ pub fn rexp(comptime T: type, lambda: T, rng: Random) T {
     return (1/lambda) * (-@log(u));
 }
 
+/// Erlang distribution (Sum of k independent exponentials with rate lambda)
+/// k: shape (number of phases)
+/// lambda: rate
+pub fn rerlang(comptime T: type, k: usize, lambda: T, rng: Random) T {
+    var product_u: T = 1.0;
+    for (0..k) |_| {
+        product_u *= rng.float(T);
+    }
+    // sum of logs = Log of product
+    const safe_p = if (product_u == 0) std.math.floatEps(T) else product_u;
+    return -math.ln(safe_p) / lambda;
+}
+
+/// Hypoexponential (Sum of n independent exponentials with DIFFERENT rates)
+/// rates: slice of lambdas
+pub fn rhypo(comptime T: type, rates: []const T, rng: Random) T {
+    var sum: T = 0.0;
+    for (rates) |lambda| {
+        sum += rexp(T, lambda, rng);
+    }
+    return sum;
+}
+
+/// Hyperexponential (Probabilistic choice between parallel branches)
+/// probs: probability of choosing branch i
+/// rates: rate of exponential for branch i
+pub fn rhyper(comptime T: type, probs: []const T, rates: []const T, rng: Random) T {
+    const p = rng.float(T); // Roll a dice 0.0 to 1.0
+    var cumulative: T = 0.0;
+    
+    for (probs, 0..) |prob, i| {
+        cumulative += prob;
+        if (p <= cumulative) {
+            return rexp(T, rates[i], rng);
+        }
+    }
+    // Fallback: return the last one in case of rounding errors
+    return rexp(T, rates[rates.len - 1], rng);
+}
 
 // petita nota sobre l'arraylist. A la següent funció, quan es crea una array list crea, en essència, una
 // struct amb un slice apuntant al heap i la capacitat d'aquest slice (que és un punter a una array + len).

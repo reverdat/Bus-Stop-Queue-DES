@@ -13,12 +13,18 @@ pub const Distribution = union(enum) {
     constant: f64,
     exponential: f64,
     uniform: struct { min: f64, max: f64 },
-
+    hypo: []const f64,  // directament les esperances
+    hyper: struct { probs: []const f64, rates: []const f64 }, // probabilitats del branching i els ratis de cada exponencial
+    erlang: struct { k: usize, lambda: f64 }, // shape, scale
+            
     pub fn sample(self: Distribution, rng: Random) !f64 {
         switch (self) {
             .constant => |val| return val,
             .exponential => |lambda| return sampling.rexp(f64, lambda, rng),
             .uniform => |p| return try sampling.runif(f64, p.min, p.max, rng),
+            .hypo => |rates| return try sampling.rhypo(f64, rates, rng),
+            .hyper => |p| return try sampling.rhyper(f64, p.shape, p.scale, rng),
+            .erlang => |p| return try samping.rerlang(f64, p.shape, p.scale, rng),
         }
     }
 
