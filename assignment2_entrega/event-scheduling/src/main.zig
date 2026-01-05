@@ -144,6 +144,7 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                     // update leaving time of the queue
                     const leaving_user: *User = &bus_stop.items[first_user_in_queue];
                     leaving_user.*.about_to_board = current_bus_arrival + acc_boarding;
+                    leaving_user.*.boarded = leaving_user.*.about_to_board.? + leaving_user.*.boarding_time.?;
                     acc_boarding += leaving_user.*.boarding_time.?;
                     
                     leaving_user.*.queue_time = leaving_user.*.about_to_board.? - leaving_user.*.arrival;
@@ -231,7 +232,7 @@ pub fn main() !void {
     });
     const rng = prng.random();
 
-    const B=100;
+    const B=1;
     const horizon = 10000;
     const lambda = 5.0;
     const mu = 4.0;
@@ -251,7 +252,7 @@ pub fn main() !void {
         };
 
         try stdout.print("{f}\n", .{config});
-        try stdout.print("Running the simulation once, saving 'traca.txt' and 'usertimes.txt'\n", .{B});
+        try stdout.print("Running the simulation once, saving 'traca.txt' and 'usertimes.txt'\n", .{});
         try stdout.flush();
     
         var traca_buffer: [64 * 1024]u8 = undefined; 
