@@ -6,6 +6,7 @@ const ArrayList = std.ArrayList;
 const Random = std.Random;
 const eql = std.mem.eql;
 const Timer = std.time.Timer;
+const Io = std.Io;
 
 const heap = @import("structheap.zig");
 const structs = @import("config.zig");
@@ -25,7 +26,7 @@ pub const Event = struct {
 };
 
 
-pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !SimResults {
+pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, traca_writer: ?*Io.Writer) !SimResults {
     var hp = heap.Heap(Event).init();
     defer hp.deinit(gpa);
 
@@ -63,19 +64,6 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
     defer bus_stop.deinit(gpa);
     var first_user_in_queue: usize = 0;
     
-    // manage the traca file opening
-    var file_writer: *std.Io.Writer = undefined;
-    var traca_file: std.fs.File = undefined;
-    
-    if (config.save_traca) {
-        var file_buffer: [64 * 1024]u8 = undefined; 
-        traca_file = try std.fs.cwd().createFile("traca.txt", .{ .read = false });
-        var traca_writer = traca_file.writer(&file_buffer);
-        file_writer  = &traca_writer.interface;
-    }
-    
-    // manage the traca file opening
-        
     var current_bus_arrival: f64 = 0.0;
     var acc_boarding: f64 = 0.0;
 
@@ -83,8 +71,8 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
         const next_event = hp.pop().?; // we use ? because we are absolutely sure there will be an element
         t_clock = next_event.time;
     
-        if (config.save_traca) {
-            try file_writer.print("Estat {d}: ({d},{d}); t={d:.4}\n", .{
+        if (traca_writer) |writer| {
+            try writer.print("Estat {d}: ({d},{d}); t={d:.4}\n", .{
                 processed_events, 
                 num_passengers_queue, 
                 current_bus_capacity, 
@@ -199,11 +187,11 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig) !Si
         last_event_time = t_clock;
     }
     
-    if (config.save_traca) {
-        try file_writer.flush(); // Don't forget to flush! :)
-        traca_file.close();
+    if (traca_writer) |writer| {
+        try writer.flush(); // Don't forget to flush! :)
     }
-    
+
+ 
     // WAIT, this won't scale if you are too ambitious and run out of heap memory lol
     // as well as slowing down the function a lot!
     if (config.save_usertimes) {
@@ -249,27 +237,37 @@ pub fn main() !void {
     });
     const rng = prng.random();
 
+    const B=1;
+    const horizon = 10000;
+    const lambda = 5.0;
+    const mu = 4.0;
+    const x = 3;
+    const k = 9;
+
     if (B == 1) {
-        const service_rates = [_]f64{ 3.0, 7.0 };
+        //const service_rates = [_]f64{ 3.0, 7.0 };
 
         const config = SimConfig{
             .horizon = horizon,
             .passenger_interarrival = Distribution{ .exponential = lambda }, // lambda
-            .bus_interarrival = Distribution{ .hypo = &service_rates },
+            .bus_interarrival = Distribution{ .exponential = mu },
             .bus_capacity = Distribution{ .constant = x }, // X
-            .boarding_time = Distribution{ .uniform = .{ .min = 2.0, .max = 8.0 } },
+            .boarding_time = Distribution{ .constant = 1e-16 },
             .system_capacity = k, // K
-            .save_traca = true,
-            .save_usertimes = true,
+            .save_usertimes = false,
         };
 
         try stdout.print("{f}\n", .{config});
         try stdout.print("Executing the simulation {d} times\n", .{B});
         try stdout.flush();
-
+    
+        var traca_buffer: [64 * 1024]u8 = undefined; 
+        const traca_file = try std.fs.cwd().createFile("traca.txt", .{ .read = false });
+        var traca_writer = traca_file.writer(&traca_buffer);
+        const twriter  = &traca_writer.interface;
+    
         var timer = try Timer.start();
-        const results = try eventSchedulingBus(gpa, rng, config);
-        
+        const results = try eventSchedulingBus(gpa, rng, config, twriter);
         const end = timer.read();
 
         const seconds = @as(f64, @floatFromInt(end)) / 1_000_000_000.0;
@@ -330,4 +328,5 @@ pub fn main() !void {
     //     try stdout.print("Total Time Elapsed: {d:.4}s\n", .{total_time});
     //     try stdout.flush();
     // }
+    }
 }

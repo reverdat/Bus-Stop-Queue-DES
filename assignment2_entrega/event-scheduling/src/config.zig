@@ -22,9 +22,9 @@ pub const Distribution = union(enum) {
             .constant => |val| return val,
             .exponential => |lambda| return sampling.rexp(f64, lambda, rng),
             .uniform => |p| return try sampling.runif(f64, p.min, p.max, rng),
-            .hypo => |rates| return try sampling.rhypo(f64, rates, rng),
-            .hyper => |p| return try sampling.rhyper(f64, p.shape, p.scale, rng),
-            .erlang => |p| return try samping.rerlang(f64, p.shape, p.scale, rng),
+            .hypo => |rates| return sampling.rhypo(f64, rates, rng),
+            .hyper => |p| return sampling.rhyper(f64, p.probs, p.rates, rng),
+            .erlang => |p| return sampling.rerlang(f64, p.k, p.lambda, rng),
         }
     }
 
@@ -42,6 +42,10 @@ pub const Distribution = union(enum) {
             .constant => |val| try writer.print("Const({d:.2})", .{val}),
             .exponential => |lambda| try writer.print("Exp(λ={d:.2})", .{lambda}),
             .uniform => |u| try writer.print("Uni({d:.1}, {d:.1})", .{ u.min, u.max }),
+            .hypo => try writer.print("TBD\n", .{}),
+            .hyper =>  try writer.print("TBD\n", .{}),
+            .erlang =>  try writer.print("TBD\n", .{}),
+
         }
     }
 };
@@ -56,7 +60,6 @@ pub const SimConfig = struct {
     boarding_time: Distribution,            // distribució que segueix el temps de pujada d'un passatjer al bus
     system_capacity: u64,                   // sempre serà un nombre
     horizon: f64,                           // temps que dura la simulació
-    save_traca: bool = false,               // guardar o no la traca a un fitxer
     save_usertimes: bool = false,           // guardar o no els temps d'usuari
                   
     pub fn format(

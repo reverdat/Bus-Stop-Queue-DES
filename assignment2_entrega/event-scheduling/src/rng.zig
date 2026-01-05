@@ -50,7 +50,7 @@ pub fn rerlang(comptime T: type, k: usize, lambda: T, rng: Random) T {
     }
     // sum of logs = Log of product
     const safe_p = if (product_u == 0) std.math.floatEps(T) else product_u;
-    return -math.ln(safe_p) / lambda;
+    return -@log(safe_p) / lambda;
 }
 
 /// Hypoexponential (Sum of n independent exponentials with DIFFERENT rates)
