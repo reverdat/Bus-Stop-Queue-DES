@@ -26,7 +26,7 @@ pub const Event = struct {
 };
 
 
-pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, traca_writer: ?*Io.Writer) !SimResults {
+pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, traca_writer: ?*Io.Writer, user_writer: ?*Io.Writer) !SimResults {
     var hp = heap.Heap(Event).init();
     defer hp.deinit(gpa);
 
@@ -154,7 +154,7 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                     num_passengers_queue -= 1;
                     current_bus_capacity -= 1;
 
-                    // si encara hi ha passatjers a la marquesina i el bus no és ple (segon fix a preguntar)
+                    // si encara hi ha passatjers a la marquesina i el bus no és ple
                     if (num_passengers_queue > 0 and current_bus_capacity > 0) {
                         event_id_counter += 1;
                         const duration = try config.boarding_time.sample(random);
@@ -174,6 +174,14 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                             user.*.departure = t_clock;
                             user.*.service_time = t_clock - user.*.about_to_board.?;
                             user.*.total_time = user.*.queue_time.? + user.*.service_time.?;
+
+                            if (user_writer) |writer| {
+                               try writer.print("{any}\n", .{user.*});
+                            }
+                        }
+                        if (first_user_in_queue > 0) {
+                            bus_stop.replaceRange(gpa, 0, first_user_in_queue, &[_]User{}) catch unreachable;
+                            first_user_in_queue = 0; 
                         }
 
                         acc_boarding = 0.0;
@@ -190,21 +198,11 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
     if (traca_writer) |writer| {
         try writer.flush(); // Don't forget to flush! :)
     }
-
- 
-    // WAIT, this won't scale if you are too ambitious and run out of heap memory lol
-    // as well as slowing down the function a lot!
-    if (config.save_usertimes) {
-        var usertimes_buffer: [64 * 1024]u8 = undefined; 
-        const user_file = try std.fs.cwd().createFile("usertime.json", .{ .read = false });
-        defer user_file.close();
-       
-        var usertime_writer = user_file.writer(&usertimes_buffer);
-        var user_writer  = &usertime_writer.interface;
-        try std.json.Stringify.value(bus_stop.items, .{ .whitespace = .indent_2 }, user_writer);
-        try user_writer.flush();
+    
+    if (user_writer) |writer| {
+        try writer.flush();
     }
-
+ 
     const L = area_system / t_clock;
     return SimResults{
         .average_clients = area_system / t_clock,
@@ -226,10 +224,6 @@ pub fn main() !void {
     var stdout_writer = std.fs.File.stdout().writer(&buffer);
     const stdout = &stdout_writer.interface;
 
-    // argAlloc per a fer-ho correcte
-    // const args = try std.process.argsAlloc(gpa);
-    // defer std.process.argsFree(gpa, args);
-    
     var prng = Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&seed));
@@ -237,7 +231,7 @@ pub fn main() !void {
     });
     const rng = prng.random();
 
-    const B=1;
+    const B=100;
     const horizon = 10000;
     const lambda = 5.0;
     const mu = 4.0;
@@ -254,11 +248,10 @@ pub fn main() !void {
             .bus_capacity = Distribution{ .constant = x }, // X
             .boarding_time = Distribution{ .constant = 1e-16 },
             .system_capacity = k, // K
-            .save_usertimes = false,
         };
 
         try stdout.print("{f}\n", .{config});
-        try stdout.print("Executing the simulation {d} times\n", .{B});
+        try stdout.print("Running the simulation once, saving 'traca.txt' and 'usertimes.txt'\n", .{B});
         try stdout.flush();
     
         var traca_buffer: [64 * 1024]u8 = undefined; 
@@ -266,8 +259,13 @@ pub fn main() !void {
         var traca_writer = traca_file.writer(&traca_buffer);
         const twriter  = &traca_writer.interface;
     
+        var user_buffer: [64 * 1024]u8 = undefined; 
+        const user_file = try std.fs.cwd().createFile("usertimes.txt", .{ .read = false });
+        var user_writer = user_file.writer(&user_buffer);
+        const uwriter  = &user_writer.interface;
+
         var timer = try Timer.start();
-        const results = try eventSchedulingBus(gpa, rng, config, twriter);
+        const results = try eventSchedulingBus(gpa, rng, config, twriter, uwriter);
         const end = timer.read();
 
         const seconds = @as(f64, @floatFromInt(end)) / 1_000_000_000.0;
@@ -276,57 +274,57 @@ pub fn main() !void {
         try stdout.print("Time Elapsed: {d:.4} seconds\n", .{seconds});
         try stdout.flush();
     } else {
-        std.debug.print("\n", .{});
-    //     const config = SimConfig{
-    //         .horizon = horizon,
-    //         .passenger_interarrival = Distribution{ .exponential = lambda }, // lambda
-    //         .bus_interarrival = Distribution{ .exponential = mu }, // mu
-    //         .bus_capacity = Distribution{ .constant = x }, // X
-    //         .boarding_time = Distribution{ .constant = 1e-16 }, // minim perque no importa
-    //         .system_capacity = k, // K
-    //     };
-    //
-    //     try stdout.print("{f}\n", .{config});
-    //     try stdout.print("Executing the simulation {d} times\n", .{B});
-    //     try stdout.flush();
-    //
-    //     const L_vals = try gpa.alloc(f64, B);
-    //     defer gpa.free(L_vals);
-    //
-    //     const t_vals = try gpa.alloc(f64, B);
-    //     defer gpa.free(t_vals);
-    //     var global_timer = try Timer.start();
-    //
-    //     for (0..B) |i| {
-    //         var timer = try Timer.start();
-    //
-    //         const results = try eventSchedulingBus(gpa, rng, config);
-    //
-    //         const end = timer.read();
-    //         const seconds = @as(f64, @floatFromInt(end)) / 1_000_000_000.0;
-    //
-    //         L_vals[i] = results.average_clients;
-    //         t_vals[i] = seconds;
-    //
-    //         if (i%100 == 0) {
-    //             const checkpoint = global_timer.read();
-    //             const checkpoint_seconds = @as(f64, @floatFromInt(checkpoint)) / 1_000_000_000.0;
-    //             try stdout.print("Done {d}/{d} iterations. Time Elapsed {d:.4}s.\n", .{i, B, checkpoint_seconds});
-    //             try stdout.flush();
-    //         }
-    //     }
-    //
-    //     const total_time = @as(f64, @floatFromInt(global_timer.read())) /  1_000_000_000.0;
-    //     const l_stats: Stats = Stats.calculateFromData(L_vals);
-    //     const t_stats: Stats = Stats.calculateFromData(t_vals);
-    //
-    //     try stdout.writeAll("\n+----------------------+\n");
-    //     try stdout.print("| BATCH RESULTS (B={d}) |\n", .{B});
-    //     try stdout.writeAll("+----------------------+\n");
-    //     try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Duration (s)", t_stats.mean, t_stats.ci });
-    //     try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Queue (L)", l_stats.mean, l_stats.ci });
-    //     try stdout.print("Total Time Elapsed: {d:.4}s\n", .{total_time});
-    //     try stdout.flush();
+        const config = SimConfig{
+            .horizon = horizon,
+            .passenger_interarrival = Distribution{ .exponential = lambda }, // lambda
+            .bus_interarrival = Distribution{ .exponential = mu }, // mu
+            .bus_capacity = Distribution{ .constant = x }, // X
+            .boarding_time = Distribution{ .constant = 1e-16 }, // minim perque no importa
+            .system_capacity = k, // K
+        };
+
+        try stdout.print("{f}\n", .{config});
+        try stdout.print("Running the simulation {d} times\n", .{B});
+        try stdout.flush();
+
+        const L_vals = try gpa.alloc(f64, B);
+        defer gpa.free(L_vals);
+
+        const t_vals = try gpa.alloc(f64, B);
+        defer gpa.free(t_vals);
+
+        var global_timer = try Timer.start();
+
+        for (0..B) |i| {
+            var timer = try Timer.start();
+
+            const results = try eventSchedulingBus(gpa, rng, config, null, null);
+
+            const end = timer.read();
+            const seconds = @as(f64, @floatFromInt(end)) / 1_000_000_000.0;
+
+            L_vals[i] = results.average_clients;
+            t_vals[i] = seconds;
+
+            if (i%100 == 0) {
+                const checkpoint = global_timer.read();
+                const checkpoint_seconds = @as(f64, @floatFromInt(checkpoint)) / 1_000_000_000.0;
+                try stdout.print("Done {d}/{d} iterations. Time Elapsed {d:.4}s.\n", .{i, B, checkpoint_seconds});
+                try stdout.flush();
+            }
+        }
+
+        const total_time = @as(f64, @floatFromInt(global_timer.read())) /  1_000_000_000.0;
+        const l_stats: Stats = Stats.calculateFromData(L_vals);
+        const t_stats: Stats = Stats.calculateFromData(t_vals);
+
+        try stdout.writeAll("\n+----------------------+\n");
+        try stdout.print("| BATCH RESULTS (B={d}) |\n", .{B});
+        try stdout.writeAll("+----------------------+\n");
+        try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Duration (s)", t_stats.mean, t_stats.ci });
+        try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Queue (L)", l_stats.mean, l_stats.ci });
+        try stdout.print("Total Time Elapsed: {d:.4}s\n", .{total_time});
+        try stdout.flush();
     // }
     }
 }

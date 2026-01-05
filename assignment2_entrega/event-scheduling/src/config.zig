@@ -60,7 +60,6 @@ pub const SimConfig = struct {
     boarding_time: Distribution,            // distribució que segueix el temps de pujada d'un passatjer al bus
     system_capacity: u64,                   // sempre serà un nombre
     horizon: f64,                           // temps que dura la simulació
-    save_usertimes: bool = false,           // guardar o no els temps d'usuari
                   
     pub fn format(
         self: SimConfig,
