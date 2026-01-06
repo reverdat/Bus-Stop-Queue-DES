@@ -10,6 +10,7 @@ const Io = std.Io;
 
 const heap = @import("structheap.zig");
 const structs = @import("config.zig");
+const loader = @import("loader.zig");
 
 const Distribution = structs.Distribution;
 const SimResults = structs.SimResults;
@@ -49,6 +50,9 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
 
     var last_event_time: f64 = 0.0;
     var event_id_counter: u64 = 0;
+    
+    // if a zero is passed, make it maxint
+    const queue_max_capacity: u64 = if (config.system_capacity == 0) std.math.maxInt(@TypeOf(config.system_capacity)) else config.system_capacity;
     
     // primera arribada de passatjer per començar la simulació
     const t_p = try config.passenger_interarrival.sample(random);
@@ -102,7 +106,7 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                 });
 
                 // if the sistem is full, client is lost
-                if (num_passengers_queue >= config.system_capacity) {
+                if (num_passengers_queue >= queue_max_capacity) {
                     lost_passengers += 1;
                 } else {
                     num_passengers_queue += 1; //len de passangers_in_queue
@@ -216,6 +220,13 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
     };
 }
 
+/// Hola Arnau! Sóc en Pau, i això és un todo del que ens falta fer :)
+/// 1. Print de la Hypo, Hyper, kerlang, rexp_trunc
+/// 2. L'string de help, igual que comprovar si algun dels arguments és help (està commentat al main)
+/// 3. Calcular la mitjana dels waittimes dins de la funció i afergir-ho a sim results. Així i tot, l'anàlisi de dades el fem a python
+/// 4. Mirar si podem escriure millor els strings dels usuaris mitjançant un format (eg, podem fer que sigui un csv si ho fem cleverly!)
+/// 5. Ara mateix el tema de les unitats és un caos. Els json estan TOTS ens minuts, però no sé si és la mateixa pregunta
+/// NOTA: ara, per no posar limits al sistema, system_capacity ha de ser 0 (es posa a maxInt a dins de la funció)
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -225,6 +236,29 @@ pub fn main() !void {
     var stdout_writer = std.fs.File.stdout().writer(&buffer);
     const stdout = &stdout_writer.interface;
 
+    var bufferr: [1024]u8 = undefined;
+    var stderr_writer = std.fs.File.stderr().writer(&bufferr);
+    const stderr = &stderr_writer.interface;
+
+    const args = try std.process.argsAlloc(gpa);
+    defer std.process.argsFree(gpa, args);
+
+    if (args.len != 2) {
+        try stdout.print("Usage: <config_filepath>\n", .{});
+        try stdout.flush();
+        std.process.exit(0);
+    }
+
+    // if (eql(u8, args[1], "-h") or
+    //     eql(u8, args[1], "--help") or
+    //     eql(u8, args[1], "help"))
+    // {
+    //     try stdout.print("{s}\n", .{HELP});
+    //     try stdout.flush();
+    //     std.process.exit(0);
+    // }
+    //
+    
     var prng = Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&seed));
@@ -232,26 +266,31 @@ pub fn main() !void {
     });
     const rng = prng.random();
 
-    const B=1;
-    const horizon = 10000;
-    const lambda = 5.0;
-    const mu = 4.0;
-    const x = 3;
-    const k = 9;
+    const config_path = args[1];
+    
+    // We use a separate parsing_arena because the JSON parser allocates internal 
+    // slices (like the 'hypo' array) that must live as long as the config exists.
+    var parsing_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer parsing_arena.deinit();
+    const parsing_allocator = parsing_arena.allocator();
 
+    const loaded_data = loader.loadConfig(parsing_allocator, config_path) catch |err| {
+        try stderr.print("Error parsing the JSON: {any}", .{err});
+        try stderr.flush();
+        std.process.exit(0);
+    };
+    defer loaded_data.deinit();
+
+    const app_config = loaded_data.value;
+    const config = app_config.sim_config;
+    const B = app_config.iterations;
+    
+    try stdout.print("Loaded configuration from {s}\n", .{config_path});
+    try stdout.print("Iterations (B): {d}\n", .{B});
+    try stdout.print("{f}\n", .{config});
+    try stdout.flush();
+   
     if (B == 1) {
-        //const service_rates = [_]f64{ 3.0, 7.0 };
-
-        const config = SimConfig{
-            .horizon = horizon,
-            .passenger_interarrival = Distribution{ .exponential = lambda }, // lambda
-            .bus_interarrival = Distribution{ .exponential = mu },
-            .bus_capacity = Distribution{ .constant = x }, // X
-            .boarding_time = Distribution{ .constant = 1e-16 },
-            .system_capacity = k, // K
-        };
-
-        try stdout.print("{f}\n", .{config});
         try stdout.print("Running the simulation once, saving 'traca.txt' and 'usertimes.txt'\n", .{});
         try stdout.flush();
     
@@ -275,16 +314,7 @@ pub fn main() !void {
         try stdout.print("Time Elapsed: {d:.4} seconds\n", .{seconds});
         try stdout.flush();
     } else {
-        const config = SimConfig{
-            .horizon = horizon,
-            .passenger_interarrival = Distribution{ .exponential = lambda }, // lambda
-            .bus_interarrival = Distribution{ .exponential = mu }, // mu
-            .bus_capacity = Distribution{ .constant = x }, // X
-            .boarding_time = Distribution{ .constant = 1e-16 }, // minim perque no importa
-            .system_capacity = k, // K
-        };
-
-        try stdout.print("{f}\n", .{config});
+   
         try stdout.print("Running the simulation {d} times\n", .{B});
         try stdout.flush();
 

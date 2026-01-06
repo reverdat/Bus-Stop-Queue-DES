@@ -16,6 +16,7 @@ pub const Distribution = union(enum) {
     hypo: []const f64,  // directament les esperances
     hyper: struct { probs: []const f64, rates: []const f64 }, // probabilitats del branching i els ratis de cada exponencial
     erlang: struct { k: usize, lambda: f64 }, // shape, scale
+    exp_trunc: struct { rate: f64, max: f64 },
             
     pub fn sample(self: Distribution, rng: Random) !f64 {
         switch (self) {
@@ -25,6 +26,7 @@ pub const Distribution = union(enum) {
             .hypo => |rates| return sampling.rhypo(f64, rates, rng),
             .hyper => |p| return sampling.rhyper(f64, p.probs, p.rates, rng),
             .erlang => |p| return sampling.rerlang(f64, p.k, p.lambda, rng),
+            .exp_trunc => |p| return @max(sampling.rexp(f64, p.rate, rng), p.max),
         }
     }
 
@@ -45,6 +47,7 @@ pub const Distribution = union(enum) {
             .hypo => try writer.print("TBD\n", .{}),
             .hyper =>  try writer.print("TBD\n", .{}),
             .erlang =>  try writer.print("TBD\n", .{}),
+            .exp_trunc => try writer.writeAll("TBD\n"),
 
         }
     }

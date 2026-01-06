@@ -1,0 +1,22 @@
+{
+  "iterations": 100,
+  "sim_config": {
+    "horizon": 10000.0,
+    "system_capacity": 1000,
+    "passenger_interarrival": { 
+        "exponential": 5.0 
+    },
+    "bus_interarrival": { 
+        "hyper": { 
+            "probs": [ 0.3, 0.7 ],
+            "rates": [ 0.1035, 0.3333 ]
+        } 
+    },
+    "bus_capacity": { 
+        "exp_trunc": { "rate": 0.05, "max": 35.0 } 
+    },
+    "boarding_time": { 
+        "constant": 0.0667
+    }
+  }
+}
