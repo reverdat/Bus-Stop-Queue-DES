@@ -1,0 +1,19 @@
+{
+  "iterations": 500,
+  "sim_config": {
+    "horizon": 100000.0,
+    "system_capacity": 9,
+    "passenger_interarrival": { 
+        "exponential": 5.0 
+    },
+    "bus_interarrival": { 
+        "exponential": 4.0
+    },
+    "bus_capacity": { 
+        "constant": 3.0
+    },
+    "boarding_time": { 
+        "constant": 1e-16
+    }
+  }
+}

@@ -101,6 +101,9 @@ pub const SimResults = struct {
     lost_buses: u64,
     processed_events: u64,
     average_queue_clients: f64,
+    average_queue_time: f64,
+    average_service_time: f64,
+    average_total_time: f64,
 
     pub fn format(self: SimResults, writer: *Io.Writer) !void {
         try writer.writeAll("+-------------------+\n");
@@ -108,8 +111,11 @@ pub const SimResults = struct {
         try writer.writeAll("+-------------------+\n");
         try writer.print("{s: <24}: {d:.4} \n", .{ "Duration", self.duration });
         try writer.print("{s: <24}: {d} \n", .{ "Events processed", self.processed_events });
-        try writer.print("{s: <24}: {d:.4}\n", .{ "Average Queue (L)", self.average_clients });
-        try writer.print("{s: <24}: {d:.4}\n", .{ "Average Queue (L_q)", self.average_queue_clients });
+        try writer.print("{s: <24}: {d:.4}\n", .{ "Average Clients (L)", self.average_clients });
+        try writer.print("{s: <24}: {d:.4}\n", .{ "Average Clients Queue (L_q)", self.average_queue_clients });
+        try writer.print("{s: <30}: {d:.4}\n", .{ "Average Queue Time (W_q)", self.average_queue_clients });
+        try writer.print("{s: <30}: {d:.4}\n", .{ "Average Service Time (W_s)", self.average_service_time });
+        try writer.print("{s: <30}: {d:.4}\n", .{ "Average Total Time (W)", self.average_total_time });
         try writer.print("{s: <24}: {d:.4}\n", .{ "Variance (Var)", self.variance });
         try writer.print("{s: <24}: {d}\n", .{ "Lost passengers", self.lost_passengers });
         try writer.print("{s: <24}: {d}\n", .{ "Lost buses", self.lost_buses });

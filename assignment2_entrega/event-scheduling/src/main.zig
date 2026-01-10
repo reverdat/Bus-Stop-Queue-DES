@@ -26,6 +26,40 @@ pub const Event = struct {
     id: u64,
 };
 
+const Metric = enum { queue_time, service_time, total_time };
+
+pub fn computeMeanMetric(bus_stop: ArrayList(User), horizon: f64, metric: Metric) f64 {
+    const n = bus_stop.items.len;
+
+    var sum_metric: f64 = 0.0;
+    var count: u64 = 0;
+
+    for (0..n) |i| {
+        const user: *User = &bus_stop.items[i];
+
+        if (user.departure) |departure_time| {
+            const maybe_metric_val: ?f64 = switch (metric) {
+                .queue_time => user.queue_time,
+                .service_time => user.service_time,
+                .total_time => user.total_time,
+            };
+
+            if (maybe_metric_val) |metric_val| {
+                if (departure_time <= horizon) {
+                    sum_metric += metric_val;
+                    count += 1;
+                }
+            }
+        }
+    }
+
+    if (count == 0) {
+        return 0.0;
+    }
+
+    return sum_metric / @as(f64, @floatFromInt(count));
+}
+
 pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, traca_writer: ?*Io.Writer, user_writer: ?*Io.Writer) !SimResults {
     var hp = heap.Heap(Event).init();
     defer hp.deinit(gpa);
@@ -174,10 +208,10 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                                 try writer.print("{any}\n", .{user.*});
                             }
                         }
-                        if (first_user_in_queue > 0) {
-                            bus_stop.replaceRange(gpa, 0, first_user_in_queue, &[_]User{}) catch unreachable;
-                            first_user_in_queue = 0;
-                        }
+                        //if (first_user_in_queue > 0) {
+                        //    bus_stop.replaceRange(gpa, 0, first_user_in_queue, &[_]User{}) catch unreachable;
+                        //    first_user_in_queue = 0;
+                        //}
 
                         acc_boarding = 0.0;
                         current_bus_capacity = 0;
@@ -207,12 +241,15 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
         .lost_buses = lost_buses,
         .processed_events = processed_events,
         .average_queue_clients = area_queue / t_clock,
+        .average_queue_time = computeMeanMetric(bus_stop, config.horizon, Metric.queue_time),
+        .average_service_time = computeMeanMetric(bus_stop, config.horizon, Metric.service_time),
+        .average_total_time = computeMeanMetric(bus_stop, config.horizon, Metric.total_time),
     };
 }
 
 /// Hola Arnau! Sóc en Pau, i això és un todo del que ens falta fer :)
 /// 1. Print de la Hypo, Hyper, kerlang, rexp_trunc ##### DONE
-/// 2. L'string de help, igual que comprovar si algun dels arguments és help (està commentat al main)
+/// 2. L'string de help, igual que comprovar si algun dels arguments és help (està commentat al main) ##### DONE
 /// 3. Calcular la mitjana dels waittimes dins de la funció i afergir-ho a sim results. Així i tot, l'anàlisi de dades el fem a python
 /// 4. Mirar si podem escriure millor els strings dels usuaris mitjançant un format (eg, podem fer que sigui un csv si ho fem cleverly!)
 /// 5. Ara mateix el tema de les unitats és un caos. Els json estan TOTS ens minuts, però no sé si és la mateixa pregunta
@@ -424,8 +461,20 @@ pub fn main() !void {
         const L_vals = try gpa.alloc(f64, B);
         defer gpa.free(L_vals);
 
+        const Lq_vals = try gpa.alloc(f64, B);
+        defer gpa.free(L_vals);
+
         const t_vals = try gpa.alloc(f64, B);
         defer gpa.free(t_vals);
+
+        const Wq_vals = try gpa.alloc(f64, B);
+        defer gpa.free(Wq_vals);
+
+        const Ws_vals = try gpa.alloc(f64, B);
+        defer gpa.free(Ws_vals);
+
+        const W_vals = try gpa.alloc(f64, B);
+        defer gpa.free(W_vals);
 
         var global_timer = try Timer.start();
 
@@ -438,6 +487,10 @@ pub fn main() !void {
             const seconds = @as(f64, @floatFromInt(end)) / 1_000_000_000.0;
 
             L_vals[i] = results.average_clients;
+            Lq_vals[i] = results.average_queue_clients;
+            Wq_vals[i] = results.average_queue_time;
+            Ws_vals[i] = results.average_service_time;
+            W_vals[i] = results.average_total_time;
             t_vals[i] = seconds;
 
             if ((i + 1) % 100 == 0) {
@@ -450,13 +503,21 @@ pub fn main() !void {
 
         const total_time = @as(f64, @floatFromInt(global_timer.read())) / 1_000_000_000.0;
         const l_stats: Stats = Stats.calculateFromData(L_vals);
+        const lq_stats: Stats = Stats.calculateFromData(Lq_vals);
+        const Wq_stats: Stats = Stats.calculateFromData(Wq_vals);
+        const Ws_stats: Stats = Stats.calculateFromData(Ws_vals);
+        const W_stats: Stats = Stats.calculateFromData(W_vals);
         const t_stats: Stats = Stats.calculateFromData(t_vals);
 
         try stdout.writeAll("\n+----------------------+\n");
         try stdout.print("| BATCH RESULTS (B={d}) |\n", .{B});
         try stdout.writeAll("+----------------------+\n");
         try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Duration (s)", t_stats.mean, t_stats.ci });
-        try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Queue (L)", l_stats.mean, l_stats.ci });
+        try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Clients (L)", l_stats.mean, l_stats.ci });
+        try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Clients Queue (L_q)", lq_stats.mean, lq_stats.ci });
+        try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Queue Time (W_q)", Wq_stats.mean, Wq_stats.ci });
+        try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Service Time (W_s)", Ws_stats.mean, Ws_stats.ci });
+        try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Total Time (W)", W_stats.mean, W_stats.ci });
         try stdout.print("Total Time Elapsed: {d:.4}s\n", .{total_time});
         try stdout.flush();
         // }
