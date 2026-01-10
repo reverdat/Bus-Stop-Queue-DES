@@ -217,6 +217,112 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
 /// 4. Mirar si podem escriure millor els strings dels usuaris mitjançant un format (eg, podem fer que sigui un csv si ho fem cleverly!)
 /// 5. Ara mateix el tema de les unitats és un caos. Els json estan TOTS ens minuts, però no sé si és la mateixa pregunta
 /// NOTA: ara, per no posar limits al sistema, system_capacity ha de ser 0 (es posa a maxInt a dins de la funció)
+const HELP =
+    \\Usage: busstop_simulation <config_filepath>
+    \\
+    \\Simulates a finite-capacity FIFO queuing system at a bus stop.
+    \\
+    \\Arguments:
+    \\  <config_filepath> STR     Path to simulation config file (JSON).
+    \\
+    \\Options:
+    \\  --info, -i                    Show the full simulation logic and state diagrams.
+    \\  --help, -h                    Show this message and exit.
+    \\
+    \\CONFIG FILE STRUCTURE
+    \\  The configuration file must be a valid JSON object containing:
+    \\
+    \\  {
+    \\    "iterations": INT,      // Total number of simulation runs
+    \\    "sim_config": {
+    \\      "horizon": FLOAT,     // Max simulation time
+    \\      "system_capacity": INT, // Max queue size (0 for infinite?)
+    \\      
+    \\      // Distributions for specific events:
+    \\      "passenger_interarrival": DISTRIBUTION,
+    \\      "bus_interarrival":       DISTRIBUTION,
+    \\      "bus_capacity":           DISTRIBUTION,
+    \\      "boarding_time":          DISTRIBUTION
+    \\    }
+    \\  }
+    \\
+    \\DISTRIBUTIONS
+    \\  The fields marked DISTRIBUTION above accept a single object defining one
+    \\  of the following probability distributions:
+    \\
+    \\  { "constant": FLOAT }
+    \\      Degenerate r.v. with constant value.
+    \\  
+    \\  { "exponential": FLOAT }
+    \\      Exponential distribution defined by rate.
+    \\
+    \\  { "uniform": { "min": FLOAT, "max": FLOAT } }
+    \\      Uniform distribution between min and max.
+    \\
+    \\  { "hypo": [ FLOAT, ... ] }
+    \\      Hypoexponential defined by a list of rates.
+    \\
+    \\  { "hyper": { "probs": [FLOAT, ...], "rates": [FLOAT, ...] } }
+    \\      Hyperexponential defined by branching probabilities and rates.
+    \\
+    \\  { "erlang": { "k": INT, "lambda": FLOAT } }
+    \\      k-Erlang distribution with rate (lambda).
+    \\
+    \\  { "exp_trunc": { "lambda": FLOAT, "max": FLOAT } }
+    \\      Truncated exponential with rate (lambda) with a cutoff value (max).
+;
+
+const INFO =
+    \\ BUS STOP SIMULATION
+    \\ -------------------
+    \\ DESCRIPTION
+    \\     Simulates a queuing system at a bus stop consisting of two main components:
+    \\     the Waiting Area (Arrivals) and the Bus (Service).
+    \\ COMPONENTS
+    \\     1. Waiting Area (Arrivals)
+    \\         - Capacity: Finite limit K.
+    \\         - Logic: Passengers arrive at random intervals τ_A(ω) and form a FIFO 
+    \\             (First-In, First-Out) queue.
+    \\         - Overflow: If the queue reaches capacity K, new arrivals are discarded.
+    \\     2. Bus (Service)
+    \\         - Capacity: Arrives with a specific capacity C(ω) at random interval τ_B(ω).
+    \\         - Service: Boarding takes a random amount of time τ_C(ω) per passenger.
+    \\         - Departure: The bus departs only when it is full OR when the waiting 
+    \\             queue is empty.
+    \\ 
+    \\ We can represent the waiting system as the tuple
+    \\     (n, c) = (Number of users in the waiting area, Remaining capacity of the bus) >= (0, 0)
+    \\ with the following transition diagram: 
+    \\
+    \\     + When no user is at the stop (n=0):
+    \\          
+    \\                τ_A(ω): A user arrives to the stop
+    \\          (0,0) ───────> (1,0)
+    \\     
+    \\     
+    \\     + When no bus is at the stop (c = 0):
+    \\     
+    \\                τ_A(ω): A user arrives to the stop
+    \\          (n,0) ───────> (n+1,0)
+    \\            |
+    \\            |
+    \\            | τ_B(ω): A bus arrives with random capacity C(ω)
+    \\            |
+    \\            v
+    \\          (n, C(ω))
+    \\     
+    \\     + When a bus is stationed at the stop (c > 0):
+    \\     
+    \\          (n-1,c-1)
+    \\            ^
+    \\             \
+    \\              \
+    \\               \ τ_C(ω): A user boards onto the bus
+    \\                \
+    \\                 \     τ_A(ω):  A user arrives to the stop
+    \\                (n,c) ───────> (n+1,c)
+;
+
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
@@ -239,15 +345,23 @@ pub fn main() !void {
         std.process.exit(0);
     }
 
-    // if (eql(u8, args[1], "-h") or
-    //     eql(u8, args[1], "--help") or
-    //     eql(u8, args[1], "help"))
-    // {
-    //     try stdout.print("{s}\n", .{HELP});
-    //     try stdout.flush();
-    //     std.process.exit(0);
-    // }
-    //
+    if (eql(u8, args[1], "-h") or
+        eql(u8, args[1], "--help") or
+        eql(u8, args[1], "help"))
+    {
+        try stdout.print("{s}\n", .{HELP});
+        try stdout.flush();
+        std.process.exit(0);
+    }
+
+    if (eql(u8, args[1], "-i") or
+        eql(u8, args[1], "--info") or
+        eql(u8, args[1], "info"))
+    {
+        try stdout.print("{s}\n", .{INFO});
+        try stdout.flush();
+        std.process.exit(0);
+    }
 
     var prng = Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
