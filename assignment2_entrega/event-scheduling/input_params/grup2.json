@@ -13,7 +13,7 @@
         } 
     },
     "bus_capacity": { 
-        "exp_trunc": { "rate": 0.05, "max": 35.0 } 
+        "exp_trunc": { "lambda": 0.05, "max": 35.0 } 
     },
     "boarding_time": { 
         "constant": 0.0667

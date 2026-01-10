@@ -10,7 +10,7 @@
         "erlang": { "k": 2, "lambda": 0.2 } 
     },
     "bus_capacity": { 
-        "exp_trunc": { "rate": 0.05, "max": 40.0 } 
+        "exp_trunc": { "lambda": 0.05, "max": 40.0 } 
     },
     "boarding_time": { 
         "constant": 0.0833

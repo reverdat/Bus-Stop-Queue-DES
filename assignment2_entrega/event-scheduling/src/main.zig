@@ -26,7 +26,6 @@ pub const Event = struct {
     id: u64,
 };
 
-
 pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, traca_writer: ?*Io.Writer, user_writer: ?*Io.Writer) !SimResults {
     var hp = heap.Heap(Event).init();
     defer hp.deinit(gpa);
@@ -40,9 +39,9 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
     var lost_passengers: u64 = 0;
     var lost_buses: u64 = 0;
     var realized_bus_capacity: u64 = 0.0;
-   
+
     var boarding_active: bool = false;
-    
+
     // stats
     var area_queue: f64 = 0.0;
     var area_system: f64 = 0.0;
@@ -50,10 +49,10 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
 
     var last_event_time: f64 = 0.0;
     var event_id_counter: u64 = 0;
-    
+
     // if a zero is passed, make it maxint
     const queue_max_capacity: u64 = if (config.system_capacity == 0) std.math.maxInt(@TypeOf(config.system_capacity)) else config.system_capacity;
-    
+
     // primera arribada de passatjer per començar la simulació
     const t_p = try config.passenger_interarrival.sample(random);
     event_id_counter += 1;
@@ -63,34 +62,28 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
     const t_b = try config.bus_interarrival.sample(random);
     event_id_counter += 1;
     try hp.push(gpa, Event{ .time = t_b, .type = .service, .id = event_id_counter });
-   
+
     var bus_stop: ArrayList(User) = .empty;
     defer bus_stop.deinit(gpa);
     var first_user_in_queue: usize = 0;
-    
+
     var current_bus_arrival: f64 = 0.0;
     var acc_boarding: f64 = 0.0;
 
     while (t_clock <= config.horizon and hp.len() > 0) : (processed_events += 1) {
         const next_event = hp.pop().?; // we use ? because we are absolutely sure there will be an element
         t_clock = next_event.time;
-    
+
         if (traca_writer) |writer| {
-            try writer.print("Estat {d}: ({d},{d}); t={d:.4}\n", .{
-                processed_events, 
-                num_passengers_queue, 
-                current_bus_capacity, 
-                t_clock
-            });
+            try writer.print("Estat {d}: ({d},{d}); t={d:.4}\n", .{ processed_events, num_passengers_queue, current_bus_capacity, t_clock });
         }
         const deltat = t_clock - last_event_time;
 
         const people_on_bus = realized_bus_capacity - current_bus_capacity;
         const system_size = num_passengers_queue + people_on_bus;
-        area_queue += @as(f64, @floatFromInt(num_passengers_queue)) * deltat;   // n_j (t_j - t_i)
-        area_system += @as(f64, @floatFromInt(system_size)) * deltat;           // L
-        area_sq += @as(f64, @floatFromInt(system_size*system_size))*deltat;     // n_j**2 (t_j - t_i)
-        
+        area_queue += @as(f64, @floatFromInt(num_passengers_queue)) * deltat; // n_j (t_j - t_i)
+        area_system += @as(f64, @floatFromInt(system_size)) * deltat; // L
+        area_sq += @as(f64, @floatFromInt(system_size * system_size)) * deltat; // n_j**2 (t_j - t_i)
 
         switch (next_event.type) {
             EventType.arrival => { // passanger arrives
@@ -116,7 +109,7 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
             EventType.service => { // bus arrives
                 // si ja hi ha un bus a la parada, poso la memòria a zero
                 const time_bus = try config.bus_interarrival.sample(random);
-                
+
                 if (boarding_active) {
                     lost_buses += 1;
                     event_id_counter += 1;
@@ -125,22 +118,20 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                     // com que no hi ha cap bus, genero la capacitat d'aquest
                     realized_bus_capacity = try config.bus_capacity.sampleInt(random);
                     try hp.push(gpa, Event{ .time = t_clock + time_bus, .type = .service, .id = event_id_counter });
-                    
-                    current_bus_capacity = realized_bus_capacity;                   
-                    
+
+                    current_bus_capacity = realized_bus_capacity;
+
                     // if we are NOT boarding start the boarding
                     if (num_passengers_queue > 0 and current_bus_capacity > 0 and boarding_active == false) {
-
                         event_id_counter += 1;
                         const duration = try config.boarding_time.sample(random);
-                        
+
                         try hp.push(gpa, Event{ .time = t_clock + duration, .type = .boarding, .id = event_id_counter });
 
                         current_bus_arrival = t_clock;
                         (&bus_stop.items[first_user_in_queue]).*.boarding_time = duration;
                         boarding_active = true;
                     }
-
                 }
             },
             EventType.boarding => { // passatjer ha pujat a l'autobus
@@ -150,12 +141,12 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                     leaving_user.*.about_to_board = current_bus_arrival + acc_boarding;
                     leaving_user.*.boarded = leaving_user.*.about_to_board.? + leaving_user.*.boarding_time.?;
                     acc_boarding += leaving_user.*.boarding_time.?;
-                    
+
                     leaving_user.*.queue_time = leaving_user.*.about_to_board.? - leaving_user.*.arrival;
                     leaving_user.*.enqueued_time = leaving_user.*.queue_time.? + leaving_user.*.boarding_time.?;
 
                     first_user_in_queue += 1;
-                    
+
                     num_passengers_queue -= 1;
                     current_bus_capacity -= 1;
 
@@ -163,17 +154,16 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                     if (num_passengers_queue > 0 and current_bus_capacity > 0) {
                         event_id_counter += 1;
                         const duration = try config.boarding_time.sample(random);
-                        
+
                         try hp.push(gpa, Event{ .time = t_clock + duration, .type = .boarding, .id = event_id_counter });
 
                         (&bus_stop.items[first_user_in_queue]).*.boarding_time = duration;
-                        
                     } else {
                         boarding_active = false; //stop the boearding once there is no passnegers or the bus is full
-                        
+
                         const passengers_on_bus = realized_bus_capacity - current_bus_capacity;
                         const start_index: usize = first_user_in_queue - passengers_on_bus;
-                        
+
                         for (start_index..first_user_in_queue) |i| {
                             const user: *User = &bus_stop.items[i];
                             user.*.departure = t_clock;
@@ -181,12 +171,12 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                             user.*.total_time = user.*.queue_time.? + user.*.service_time.?;
 
                             if (user_writer) |writer| {
-                               try writer.print("{any}\n", .{user.*});
+                                try writer.print("{any}\n", .{user.*});
                             }
                         }
                         if (first_user_in_queue > 0) {
                             bus_stop.replaceRange(gpa, 0, first_user_in_queue, &[_]User{}) catch unreachable;
-                            first_user_in_queue = 0; 
+                            first_user_in_queue = 0;
                         }
 
                         acc_boarding = 0.0;
@@ -199,19 +189,19 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
 
         last_event_time = t_clock;
     }
-    
+
     if (traca_writer) |writer| {
         try writer.flush(); // Don't forget to flush! :)
     }
-    
+
     if (user_writer) |writer| {
         try writer.flush();
     }
- 
+
     const L = area_system / t_clock;
     return SimResults{
         .average_clients = area_system / t_clock,
-        .variance = (area_sq / t_clock) - L*L,
+        .variance = (area_sq / t_clock) - L * L,
         .duration = t_clock,
         .lost_passengers = lost_passengers,
         .lost_buses = lost_buses,
@@ -221,7 +211,7 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
 }
 
 /// Hola Arnau! Sóc en Pau, i això és un todo del que ens falta fer :)
-/// 1. Print de la Hypo, Hyper, kerlang, rexp_trunc
+/// 1. Print de la Hypo, Hyper, kerlang, rexp_trunc ##### DONE
 /// 2. L'string de help, igual que comprovar si algun dels arguments és help (està commentat al main)
 /// 3. Calcular la mitjana dels waittimes dins de la funció i afergir-ho a sim results. Així i tot, l'anàlisi de dades el fem a python
 /// 4. Mirar si podem escriure millor els strings dels usuaris mitjançant un format (eg, podem fer que sigui un csv si ho fem cleverly!)
@@ -230,8 +220,8 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
-    const gpa = arena.allocator();    // set up the stdout buffer
-    
+    const gpa = arena.allocator(); // set up the stdout buffer
+
     var buffer: [1024]u8 = undefined;
     var stdout_writer = std.fs.File.stdout().writer(&buffer);
     const stdout = &stdout_writer.interface;
@@ -258,7 +248,7 @@ pub fn main() !void {
     //     std.process.exit(0);
     // }
     //
-    
+
     var prng = Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&seed));
@@ -267,8 +257,8 @@ pub fn main() !void {
     const rng = prng.random();
 
     const config_path = args[1];
-    
-    // We use a separate parsing_arena because the JSON parser allocates internal 
+
+    // We use a separate parsing_arena because the JSON parser allocates internal
     // slices (like the 'hypo' array) that must live as long as the config exists.
     var parsing_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer parsing_arena.deinit();
@@ -284,25 +274,25 @@ pub fn main() !void {
     const app_config = loaded_data.value;
     const config = app_config.sim_config;
     const B = app_config.iterations;
-    
+
     try stdout.print("Loaded configuration from {s}\n", .{config_path});
     try stdout.print("Iterations (B): {d}\n", .{B});
     try stdout.print("{f}\n", .{config});
     try stdout.flush();
-   
+
     if (B == 1) {
         try stdout.print("Running the simulation once, saving 'traca.txt' and 'usertimes.txt'\n", .{});
         try stdout.flush();
-    
-        var traca_buffer: [64 * 1024]u8 = undefined; 
+
+        var traca_buffer: [64 * 1024]u8 = undefined;
         const traca_file = try std.fs.cwd().createFile("traca.txt", .{ .read = false });
         var traca_writer = traca_file.writer(&traca_buffer);
-        const twriter  = &traca_writer.interface;
-    
-        var user_buffer: [64 * 1024]u8 = undefined; 
+        const twriter = &traca_writer.interface;
+
+        var user_buffer: [64 * 1024]u8 = undefined;
         const user_file = try std.fs.cwd().createFile("usertimes.txt", .{ .read = false });
         var user_writer = user_file.writer(&user_buffer);
-        const uwriter  = &user_writer.interface;
+        const uwriter = &user_writer.interface;
 
         var timer = try Timer.start();
         const results = try eventSchedulingBus(gpa, rng, config, twriter, uwriter);
@@ -314,7 +304,6 @@ pub fn main() !void {
         try stdout.print("Time Elapsed: {d:.4} seconds\n", .{seconds});
         try stdout.flush();
     } else {
-   
         try stdout.print("Running the simulation {d} times\n", .{B});
         try stdout.flush();
 
@@ -337,15 +326,15 @@ pub fn main() !void {
             L_vals[i] = results.average_clients;
             t_vals[i] = seconds;
 
-            if (i%100 == 0) {
+            if ((i + 1) % 100 == 0) {
                 const checkpoint = global_timer.read();
                 const checkpoint_seconds = @as(f64, @floatFromInt(checkpoint)) / 1_000_000_000.0;
-                try stdout.print("Done {d}/{d} iterations. Time Elapsed {d:.4}s.\n", .{i, B, checkpoint_seconds});
+                try stdout.print("Done {d}/{d} iterations. Time Elapsed {d:.4}s.\n", .{ i + 1, B, checkpoint_seconds });
                 try stdout.flush();
             }
         }
 
-        const total_time = @as(f64, @floatFromInt(global_timer.read())) /  1_000_000_000.0;
+        const total_time = @as(f64, @floatFromInt(global_timer.read())) / 1_000_000_000.0;
         const l_stats: Stats = Stats.calculateFromData(L_vals);
         const t_stats: Stats = Stats.calculateFromData(t_vals);
 
@@ -356,6 +345,6 @@ pub fn main() !void {
         try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Queue (L)", l_stats.mean, l_stats.ci });
         try stdout.print("Total Time Elapsed: {d:.4}s\n", .{total_time});
         try stdout.flush();
-    // }
+        // }
     }
 }
