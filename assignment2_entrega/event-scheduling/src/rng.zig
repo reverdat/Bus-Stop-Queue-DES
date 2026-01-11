@@ -5,52 +5,59 @@ const Random = std.Random;
 const Allocator = std.mem.Allocator;
 const pow = std.math.pow;
 
-const RNGError = error{ InvalidRange };
+const RNGError = error{InvalidRange};
 
-    //
-    // try stdout.flush();
-    //
-    // var unif_sample: ArrayList(T) = try runifSampleAlloc(&gpa, sample, T, a, b, &rand);
-    // defer unif_sample.deinit(gpa);
-    //
-    // var weibull_sample: ArrayList(T) = try rwbSampleAlloc(&gpa, sample, T, lambda_w, k, &rand);
-    // defer weibull_sample.deinit(gpa);
-    //
-    // var exp_sample: ArrayList(T) = try rexpSampleAlloc(&gpa, sample, T, lambda_e, &rand);
-    // defer exp_sample.deinit(gpa);
-    //
-    // var cauchy_sample: ArrayList(T) = try rcauchySampleAlloc(&gpa, sample, T, gamma, x0, &rand);
-    // defer cauchy_sample.deinit(gpa);
-    //
-    // var gamma_sample: ArrayList(T) = try rgammaSampleAlloc(&gpa, sample, T, shape, scale, &rand);
-    // defer gamma_sample.deinit(gpa);
-    //
+//
+// try stdout.flush();
+//
+// var unif_sample: ArrayList(T) = try runifSampleAlloc(&gpa, sample, T, a, b, &rand);
+// defer unif_sample.deinit(gpa);
+//
+// var weibull_sample: ArrayList(T) = try rwbSampleAlloc(&gpa, sample, T, lambda_w, k, &rand);
+// defer weibull_sample.deinit(gpa);
+//
+// var exp_sample: ArrayList(T) = try rexpSampleAlloc(&gpa, sample, T, lambda_e, &rand);
+// defer exp_sample.deinit(gpa);
+//
+// var cauchy_sample: ArrayList(T) = try rcauchySampleAlloc(&gpa, sample, T, gamma, x0, &rand);
+// defer cauchy_sample.deinit(gpa);
+//
+// var gamma_sample: ArrayList(T) = try rgammaSampleAlloc(&gpa, sample, T, shape, scale, &rand);
+// defer gamma_sample.deinit(gpa);
+//
 
 /// Generate a random number of a uniform distribution
 /// in the interval [a,b].
 pub fn runif(comptime T: type, a: T, b: T, rng: Random) !T {
     if (@typeInfo(T) != .float) @compileError("T must be a float (eg f32 or f64)\n");
     if (b < a) return RNGError.InvalidRange;
-    
+
     return a + (b - a) * rng.float(T);
 }
 
 pub fn rexp(comptime T: type, lambda: T, rng: Random) T {
     const u = runif(T, 0, 1, rng) catch unreachable; // com que 0, 1 estan harcodejats, mai tindrem error
-    return (1/lambda) * (-@log(u));
+    return (1 / lambda) * (-@log(u));
 }
 
 /// Erlang distribution (Sum of k independent exponentials with rate lambda)
 /// k: shape (number of phases)
 /// lambda: rate
+//pub fn rerlang(comptime T: type, k: usize, lambda: T, rng: Random) T {
+//    var product_u: T = 1.0;
+//    for (0..k) |_| {
+//        product_u *= rng.float(T);
+//    }
+//    // sum of logs = Log of product
+//    const safe_p = if (product_u == 0) std.math.floatEps(T) else product_u;
+//    return -@log(safe_p) / lambda;
+//}
 pub fn rerlang(comptime T: type, k: usize, lambda: T, rng: Random) T {
-    var product_u: T = 1.0;
+    var sum: f64 = 0.0;
     for (0..k) |_| {
-        product_u *= rng.float(T);
+        sum += rexp(T, lambda, rng);
     }
-    // sum of logs = Log of product
-    const safe_p = if (product_u == 0) std.math.floatEps(T) else product_u;
-    return -@log(safe_p) / lambda;
+    return sum;
 }
 
 /// Hypoexponential (Sum of n independent exponentials with DIFFERENT rates)
@@ -69,7 +76,7 @@ pub fn rhypo(comptime T: type, rates: []const T, rng: Random) T {
 pub fn rhyper(comptime T: type, probs: []const T, rates: []const T, rng: Random) T {
     const p = rng.float(T); // Roll a dice 0.0 to 1.0
     var cumulative: T = 0.0;
-    
+
     for (probs, 0..) |prob, i| {
         cumulative += prob;
         if (p <= cumulative) {
@@ -114,7 +121,6 @@ fn rexpSampleAlloc(allocator: Allocator, n: u32, comptime T: type, lambda: T, rn
 
     return sample;
 }
-
 
 /// Generate a sample of a Weibull distribution of lambda and k.
 fn rwbSampleAlloc(allocator: Allocator, n: u32, comptime T: type, lambda: T, k: T, rng: Random) !ArrayList(T) {
