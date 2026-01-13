@@ -155,7 +155,7 @@ pub const User = struct {
     boarding_time: ?f64 = null, // Temps que trigo a pujar a l'autobus
     queue_time: ?f64 = null, // w_q: arrival + for (gent davant meu de la cua) boarding_time
     enqueued_time: ?f64 = null, // queue_time + boarding_time (això és només perque la definició de l'esteve està terrible)
-    service_time: ?f64 = null, // w_s: temps que estàs dins  // w: suma de les dues anteriosde l'autobus
+    service_time: ?f64 = null, // w_s: temps que trigues en pujar i marxar
     total_time: ?f64 = null, // w: suma de les dues anterios
 
     pub fn format(

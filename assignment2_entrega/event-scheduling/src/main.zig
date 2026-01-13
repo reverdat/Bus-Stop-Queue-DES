@@ -28,7 +28,7 @@ pub const Event = struct {
 
 const Metric = enum { queue_time, service_time, total_time };
 
-pub fn computeMeanMetric(bus_stop: ArrayList(User), horizon: f64, metric: Metric) f64 {
+pub fn computeMeanMetric(bus_stop: ArrayList(User), metric: Metric) f64 {
     const n = bus_stop.items.len;
 
     var sum_metric: f64 = 0.0;
@@ -37,7 +37,7 @@ pub fn computeMeanMetric(bus_stop: ArrayList(User), horizon: f64, metric: Metric
     for (0..n) |i| {
         const user: *User = &bus_stop.items[i];
 
-        if (user.departure) |departure_time| {
+        if (user.departure) |_| {
             const maybe_metric_val: ?f64 = switch (metric) {
                 .queue_time => user.queue_time,
                 .service_time => user.service_time,
@@ -45,10 +45,8 @@ pub fn computeMeanMetric(bus_stop: ArrayList(User), horizon: f64, metric: Metric
             };
 
             if (maybe_metric_val) |metric_val| {
-                if (departure_time <= horizon) {
-                    sum_metric += metric_val;
-                    count += 1;
-                }
+                sum_metric += metric_val;
+                count += 1;
             }
         }
     }
@@ -150,19 +148,20 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                     try hp.push(gpa, Event{ .time = t_clock + time_bus, .type = .service, .id = event_id_counter });
                 } else {
                     // com que no hi ha cap bus, genero la capacitat d'aquest
+                    current_bus_arrival = t_clock;
                     realized_bus_capacity = try config.bus_capacity.sampleInt(random);
                     try hp.push(gpa, Event{ .time = t_clock + time_bus, .type = .service, .id = event_id_counter });
 
                     current_bus_capacity = realized_bus_capacity;
 
+                    event_id_counter += 1;
+
                     // if we are NOT boarding start the boarding
                     if (num_passengers_queue > 0 and current_bus_capacity > 0 and boarding_active == false) {
-                        event_id_counter += 1;
                         const duration = try config.boarding_time.sample(random);
 
                         try hp.push(gpa, Event{ .time = t_clock + duration, .type = .boarding, .id = event_id_counter });
 
-                        current_bus_arrival = t_clock;
                         (&bus_stop.items[first_user_in_queue]).*.boarding_time = duration;
                         boarding_active = true;
                     }
@@ -201,7 +200,7 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                         for (start_index..first_user_in_queue) |i| {
                             const user: *User = &bus_stop.items[i];
                             user.*.departure = t_clock;
-                            user.*.service_time = t_clock - user.*.about_to_board.?;
+                            user.*.service_time = (t_clock - user.*.about_to_board.?);
                             user.*.total_time = user.*.queue_time.? + user.*.service_time.?;
 
                             if (user_writer) |writer| {
@@ -241,9 +240,9 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
         .lost_buses = lost_buses,
         .processed_events = processed_events,
         .average_queue_clients = area_queue / t_clock,
-        .average_queue_time = computeMeanMetric(bus_stop, config.horizon, Metric.queue_time),
-        .average_service_time = computeMeanMetric(bus_stop, config.horizon, Metric.service_time),
-        .average_total_time = computeMeanMetric(bus_stop, config.horizon, Metric.total_time),
+        .average_queue_time = computeMeanMetric(bus_stop, Metric.queue_time),
+        .average_service_time = computeMeanMetric(bus_stop, Metric.service_time),
+        .average_total_time = computeMeanMetric(bus_stop, Metric.total_time),
     };
 }
 
