@@ -1,10 +1,10 @@
 {
-  "iterations": 100000,
+  "iterations": 10000000,
   "sim_config": {
     "horizon": 300.0,
     "system_capacity": 0,
     "passenger_interarrival": { 
-        "exponential": 0.749997225
+        "exponential": 0.75
     },
     "bus_interarrival": { 
         "hypo": [ 0.333333, 0.142857 ]

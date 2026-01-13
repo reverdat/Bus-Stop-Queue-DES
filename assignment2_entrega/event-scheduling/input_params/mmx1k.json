@@ -1,7 +1,7 @@
 {
-  "iterations": 500,
+  "iterations": 100000,
   "sim_config": {
-    "horizon": 100000.0,
+    "horizon": 10000.0,
     "system_capacity": 9,
     "passenger_interarrival": { 
         "exponential": 5.0 
