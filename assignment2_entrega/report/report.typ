@@ -1,5 +1,6 @@
 #import "@preview/lovelace:0.3.0": *
 #import "@preview/cetz:0.3.1"
+
 #set page(
     header: context{
         if counter(page).get().first() > 1 [
@@ -23,10 +24,10 @@
 #show heading: set block(above: 1.4em, below: 1em)
 
 #align(center, text(18pt)[
-  *Simulació del sistema d'espera d'una parada d'autobús com a cua $M\/M^([X])\/1\/K$* 
+  *Simulació del sistema d'espera d'una parada d'autobús mitjançant _Event-Scheduling_* 
 ])
 #align(center, text(16pt)[
-  _Preentrega_ 
+  _Entrega_ 
 ])
 
 
@@ -35,7 +36,7 @@
     #stack(
         spacing: 0.65em,
         [_Arnau Pérez Reverte, Pau Soler Valadés_],
-        [_27-12-2025_],
+        [_18-01-2026_],
         [_Simulació, MESIO UPC-UB_]
     )
 ]
@@ -44,28 +45,34 @@
 
 L'objectiu principal d'aquesta pràctica és el disseny, implementació i anàlisi d'un motor de simulació d'esdeveniments discrets (Discrete Event Simulation) aplicat a un sistema d'espera d'una parada d'autobús. En aquest sistema interaccionen dues entitats principals, els usuaris (clients) i els autobusos (servidors), sota condicions d'incertesa en els temps d'arribada i capacitats.
 
-Aquest document constitueix és la preentrega del treball. La finalitat d'aquesta fase inicial no és encara simular el sistema amb tota la seva complexitat estocàstica final, sinó establir una base sòlida de programari i validar-ne la correcció (verificació del model). Per aconseguir-ho, s'assumeix un conjunt d'hipòtesis simplificadores, com ara temps de servei nuls i taxes exponencials, que permeten modelitzar la parada teòricament com una cua markoviana $M\/M^([X])\/1\/K$. Aquesta reducció és crucial en aquesta etapa, ja que ens permet obtenir solucions analítiques exactes de l'estat estacionari i utilitzar-les com a referència per auditar la precisió del nostre simulador.
+#text(blue)[Aquest document constitueix és la preentrega del treball. La finalitat d'aquesta fase inicial no és encara simular el sistema amb tota la seva complexitat estocàstica final, sinó establir una base sòlida de programari i validar-ne la correcció (verificació del model). Per aconseguir-ho, s'assumeix un conjunt d'hipòtesis simplificadores, com ara temps de servei nuls i taxes exponencials, que permeten modelitzar la parada teòricament com una cua markoviana $M\/M^([X])\/1\/K$. Aquesta reducció és crucial en aquesta etapa, ja que ens permet obtenir solucions analítiques exactes de l'estat estacionari i utilitzar-les com a referència per auditar la precisió del nostre simulador.]
 
 La metodologia de treball s'ha basat en la implementació de l'algorisme de programació d'esdeveniments (_Event-Scheduling_) utilitzant el llenguatge de sistemes Zig, prioritzant l'eficiència computacional i la gestió robusta de memòria per a la generació de trajectòries llargues.
 
-A continuació, es presenta primer la definició formal del sistema i la seva justificació teòrica. Seguidament, es detallen les decisions d'arquitectura preses durant la implementació en Zig. Finalment, es comparen els resultats estadístics de la simulació (concretament l'ocupació mitjana del sistema segons la Llei de Little) amb els valors teòrics esperats per demostrar la validesa del simulador desenvolupat. Als appendix s'hi troba un manual d'ajuda per a l'execució del codi i compilació, a més a més de diversos extres que han sorgit durant la entrega.
+#text(blue)[
+A continuació, es presenta primer la definició formal del sistema i la seva justificació teòrica. Seguidament, es detallen les decisions d'arquitectura preses durant la implementació en Zig. Finalment, es comparen els resultats estadístics de la simulació (concretament l'ocupació mitjana del sistema segons la Llei de Little) amb els valors teòrics esperats per demostrar la validesa del simulador desenvolupat. Als appendix s'hi troba un manual d'ajuda per a l'execució del codi i compilació, a més a més de diversos extres que han sorgit durant la entrega.]
 
 = Definició del Sistema
-En aquesta secció formalitzem el funcionament de la parada d'autobús. El sistema es modelitza com un procés estocàstic de temps continu on interactuen dues entitats: els usuaris (que arriben i fan cua) i el servidor (l'autobús que arriba, carrega usuaris i marxa). Detallarem certes hipòtesis que justifiquem les decisions que hem pres a l'hora d'implementar el model.
+En aquesta secció formalitzem el funcionament de la parada d'autobús. El sistema es modelitza com un procés estocàstic de temps continu on interactuen dues entitats: els usuaris (que arriben i fan cua) i el servidor (l'autobús que arriba, carrega usuaris i marxa). Detallarem certes hipòtesis que justifiquem les decisions que hem pres a l'hora d'implementar el model. 
 
-Per a aquesta preentrega, l'objectiu és validar el motor de simulació contrastant-lo amb resultats analítics coneguts. Per aquest motiu, apliquem simplificacions que permeten tractar el sistema com una cua caracteritzada com a cadena de Màrkov de temps continu (CTMC).
+Aquesta secció a més a més manté la base teòrica presentada com a preentrega, que ens ha servit per fonamentar el motor de simulació mitjançant la simplificació del problema com a una cua $M\/\M^([X])\/1\/K$, ja que permet assolir un estat estacionari on la distribució estacionària es pot resoldre analíticament, obtenint així una _ground-truth_ referent davant de la complexitat que suposa el problema.
 
 == Dinàmica i Components
 El sistema d'espera es tracta d'una parada d'autobús on arriben usuaris que esperen a que arribi un autobús per tal de pujar-hi i eventualment marxar. Es poden definir dos principals components: la marquesina (arribades) i l'autobús (serveis).
 \
-1. *Marquesina*: Es tracta d'una plataforma de capacitat finita $K$ on els usuaris arriben de forma individual en un temps aleatori $tau_i$ i esperen a ser servits per un autobús. S'assumeix que els usuaris són respectuossos i s'ordenen en una cua per ordre d'arribada per tal de pujar a l'autobús seguint la doctrina FIFO (First-In First-Out). Si en un determinat moment la cua conté $K$ usuaris i arriba un de nou, aquest no es posa a la cua, sinó que és descartat.
-2. *Autobús*: És l'únic servidor del sistema d'espera. Arriba en un temps aleatori a la parada i amb una capacitat $X$. Permet començar l'embarcament dels usuaris esperant a la marquesina, els quals triguen a pujar a l'autobús un temps aleatori. El bus marxa de la parada només quan exhaureix la seva capacitat o bé quan no queden usuaris esperant a la marquesina.
+1. *Marquesina*: Es tracta d'una plataforma de capacitat finita $K$ on els usuaris arriben de forma individual en un temps aleatori $tau_A$ i esperen a ser servits per un autobús. S'assumeix que els usuaris són respectuossos i s'ordenen en una cua per ordre d'arribada per tal de pujar a l'autobús seguint la doctrina FIFO (First-In First-Out). Si en un determinat moment la cua conté $K$ usuaris i arriba un de nou, aquest no es posa a la cua, sinó que és descartat.
+2. *Autobús*: És l'únic servidor del sistema d'espera. Arriba en un temps aleatori a la parada $tau_B$ i amb una capacitat $X$. Permet començar l'embarcament dels usuaris esperant a la marquesina, els quals triguen a pujar a l'autobús un temps aleatori $tau_C$. El bus marxa de la parada només quan exhaureix la seva capacitat o bé quan no queden usuaris esperant a la marquesina.
+\
+
+#text(blue)[TODO: \
+  Aprofitem per extendre aquest apartat per definir en detall què és $L$, $L_q$, $W$, $W_s$ i $W_q$.
+]
 
 == Modelització en cua
-El sistema d'espera descrit anteriorment es pot identificar amb una cua $M\/\M^([X])\/1\/K$ mitjançant una serie de hipòtesis vàlides per aquesta preentregra. A continuació es proporcion a una simple demostració d'aquesta afirmació que no busca ser rigorosa:
-1. El temps entre dues arribades d'usuaris consecutives a la marquesina $tau_(i+1) - tau_i$ és una v.a. que segueix una llei exponencial de paràmetre fix $lambda$.
-2. El temps d'arribada d'un nou bus a la parada un cop ha marxat l'últim és una v.a. que segueix una llei exponencial de paràmetre fix $mu$.
-3. El temps que triga un usuari a pujar de la marquesina al bus és una v.a. degenerada i de valor constant $nu approx 0$.
+El sistema d'espera descrit anteriorment es pot identificar amb una cua $M\/\M^([X])\/1\/K$ mitjançant una serie de hipòtesis que es defineixen a continuació. A continuació es proporciona una simple demostració d'aquesta afirmació que no busca ser rigorosa:
+1. El temps entre dues arribades d'usuaris consecutives a la marquesina $tau_(A, i+1) - tau_(A, i)$ és una v.a. que segueix una llei exponencial de paràmetre fix $lambda$.
+2. El temps d'arribada entre busos a la parada $tau_(B, i+1) - tau_(B, i)$ és una v.a. que segueix una llei exponencial de paràmetre fix $mu$.
+3. El temps que triga un usuari a pujar de la marquesina $tau_C$ al bus és una v.a. degenerada i de valor constant $nu approx 0$.
 Sigui $(n, c) in bb(Z)_(+)^(2)$ l'estat del sistema d'espera en un determinat instant de temps, on $n$ és el nombre d'usuaris a la marquesina i $c$ és la capacitat restant del bus.
 - Si $c = 0$, aleshores pel definit assumim que no hi ha un autobús a la parada. Per tant, només pot succeïr que arribi un altre usuari a la cua definida per la marquesina, o bé que arribi un autobús a la parada amb una determinada capacitat $c^prime$, i per tant es correspon amb transicions a l'estat $(n+1, 0)$ només si $n+1 <= K$ o bé a $(n, c^prime)$, respectivament.
 - Si $c > 0$, aleshores en aquest instant es troben $n$ usuaris a la marquesina i un bus amb capacitat restant $c$ estacionat a la parada. Per tant, només pot succeïr que un usuari pugi a l'autobús o bé que arribi un altre usuari a la marquesina, transicionant als estats $(n-1, c-1)$ o $(n+1, c)$ només si $n+1 <= K$, respectivament. Les transicions del primer tipus triguen un temps $nu$ que suposem aproximadament nul.
@@ -104,12 +111,12 @@ Finalment, observem que l'esquema de transicions definit, juntament amb els temp
 )<fig:mmx1k>
 \
 
-És important insistir en que aquesta demostració es fonamenta en una sèrie de hipòtesis fetes per la preentrega d'aquest treball, i que no seran vàlides per a la entrega final. Una representació general del diagrama de transicions de la parada d'autobús és donada per la #ref(<fig:markov_bus>), i per la seva simplificació #ref(<fig:mmx1k>).
+Una representació general del diagrama de transicions de la parada d'autobús és donada per la #ref(<fig:markov_bus>), i per la seva simplificació #ref(<fig:mmx1k>).
 
 
 == Estat estacionari i la Llei de Little
 
-El fet que el comportament teòric del sistema d'espera de la parada d'autobús sigui equivalent a una cua $M$/$M^([X])$/$1$/$K$ ens permet resoldre les equacions del seu estat estacionari de la cadena de Màrkov asssociada.
+El fet que el comportament teòric del sistema d'espera de la parada d'autobús sigui equivalent a una cua $M$/$M^([X])$/$1$/$K$ sota aquestes condicions ens permet resoldre les equacions del seu estat estacionari de la cadena de Màrkov asssociada.
 
 Per calcular les probabilitats d'estat estacionari $P_n$, plantegem les equacions d'equilibri global de la cadena de Markov contínua. L'estructura de transicions dona lloc al sistema lineal $Q^T P = 0$ juntament amb la normalització $sum_(n=0)^K P_n = 1$ i $P_n >= 0$. D'acord amb l'enunciat de la preentrega, a partir d'ara fixem la capacitat de l'autobús com a una v.a. constant $X equiv c = 3$ i la marquesina $K = 9$. Formalment, hem de resoldre el sistema d'equacions:
 
@@ -191,24 +198,215 @@ const config = SimConfig{
 Per tant, per l'entrega final només caldrà modificar la estructura `Distribution` i afegir-hi qualsevol distribució que sigui demanada. Més enllà d'aquests detalls, el codi s'assembla molt al pseudocodi entregat a classe, i es pot trobar al fitxer `main.zig` de l'entrega.
 
 
-= Resultats i conclusions
-A continuació presentem els resultats de la simulació implementada i els comparem als valors teòrics. Fixem els paràmetres 
+= Resultats
+
+Un cop implementat el motor de simulació, procedim en verificar la seva correcta programació mitjançant diverses instàncies preliminars per finalment executar la instància assignada al nostre grup.
+
+En el primer apartat es presenten els resultats sota els paràmetres que simplifiquen el sistema a la cua ja descrita en els apartats anteriors. Buscarem calcular principalment el valor de la ocupació mitjana del sistema d'espera $hat(L)$ per comparar-lo amb el valor teòric $L$ aconseguit mitjançant les equacions d'estat estacionari. Després, descriurem la instància assignada al nostre grup (Grup 2), analitzant amb detall les connotacions que aquesta comporta.
+== Validació de la $M\/\M^([X])\/1\/K$
+Per reduïr la parada d'autobusos a la cua, recordem que tractem amb arribades d'usuaris i de busos Poissonianes de paràmetres $lambda$ i $mu$ respectivament, temps d'embarcament nuls, i capacitats de l'autobús $X$ i marquesina $K$ finites. Això porta a la definició del fitxer de paràmetres d'entrada `input_params/mmx1k.json`.
+Fixem els mateixos paràmetres que a la preentrega,
 #align(center, table(
-  columns: 5,
+  columns: 4,
   stroke: none,
   column-gutter: 2em, // Space between items
-  [$lambda = 5$], [$mu = 4$], [$K = 9$], [$X = 3$], [$T = 10000,$]
+  [$lambda := 5$], [$mu := 4$], [$K := 9$], [$X := 3$]
 ))
-on $T$ és l'horitzó temporal de la simulació en unitats de temps. Resolent numèricament el sistema d'equacions globals de l'estat estacionari trobem que el valor teòric de $L$ és, aproximadament, $L approx 1.5770.$ Executem la nostra implementació amb aquests mateixos paràmetres, i generem $B=10000$ trajectòries, de forma que podem estimar $L$ amb alta precisió proporcionant un interval de confiança al nivell $95\%$:
+amb un horitzó temporal de $T = 10000$. Resolent numèricament el sistema d'equacions globals de l'estat estacionari trobem que el valor teòric de $L$ és, aproximadament, $L approx 1.5770.$ Executem la nostra implementació amb aquests mateixos paràmetres, i generem $B=100000$ trajectòries, de forma que podem estimar $L$ amb alta precisió proporcionant un interval de confiança al nivell $95\%$:
 $
-  hat(L) = 1.5767 plus.minus 0.000372.
+  hat(L) = 1.5769 plus.minus 1.19 dot 10^(-4).
+$
+Observem que el valor calculat és molt proper al valor teòric, i la estimació puntual té una desviació típica molt petita de $hat(sigma) approx 6.0714 dot 10^(-5) $. Altres magnituts del sistema d'espera reportades són:
+
+$
+  hat(L_q) = 1.5769 plus.minus 1.19 dot 10^(-4).
+$
+$
+  hat(W_q) = 0.3183 plus.minus 2.20 dot 10^(-5).
+$
+$
+  hat(W_s) = 0.
 $
 
-El resultat ens permet aleshores afirmar que la implementació de la simulació és correcta.
+$
+  hat(W) = 0.3183 plus.minus 2.20 dot 10^(-5).
+$
+\
 
-Cal destacar que la decisió d'implementar la simulació en Zig ha facilitat molt l'obtenció d'aquests resultats, ja que ha permès la simulació de $B=10000$ trajectòries en un temps més que factible, ja que el temps d'execució d'una única simulació s'ha estimat com a $0.0058 plus.minus 0.000012$. 
+Observem que sota aquests condicions tenim $hat(W_s) = 0$, un fet que és d'esperar ja que en l'arribada d'un bus a la parada aquest serveix immediatament als $X = 3$ primers usuaris de la parada com a conseqüència del temps d'embarcament nul. Aquest fet també provoca que observem $hat(L) = hat(L_q)$, ja que no hi ha pràcticament distinció entre cua i sistema d'espera. Finalment, cal destacar que tenim $hat(L)\/hat(W) approx 4.9541 approx 5 = lambda$, verificant la Llei de Little.
 
-Concloem que aquesta primera entrega ha satisfet el seu objectiu de definir una base sòlida en quant a teoria i codi per a la posterior realització d'una simulació de la parada d'autobús amb paràmetres més complexos, com ara la capacitat d'autobús i temps d'embarcament aleatoris.
+== Definició de la instància #label("sec:inst")
+L'entrega final incrementa la complexitat del model de simulació mitjançant distribucions temporals amb memòria i factors de capacitat molt limitats. En particular, els paràmetres assignats pel Grup 2 són els següents:
+
+\
+
+- La capacitat d'un autobús a la seva arribada $X$ segueix una distribució exponencial truncada d'esperança $K^(prime)(e^2-3)\/(2e^2-2) ~ K^prime\/3$, amb $K^(prime) := 30$:
+
+$
+  X ~ f_(gamma)(c) = 2 / (K^(prime)(e^2 - 1)) op("exp") lr((2(1 - c / K^prime))), quad 0 <= c <= K^prime.
+$
+
+- La capacitat de la marquesina $K$ és il·limitada:
+
+$
+    K = + infinity. 
+$
+
+- El temps de pujada d'un usuari segueix una distribució uniforme entre $a := 2$ i $b := 8$:
+
+
+$
+  tau_(C, i) equiv nu ~ "Unif"(a,b).
+$
+
+- El temps entre les arribades d'autobusos a la parada segueix una distribució hipoexponencial de dues etapes amb temps mitjans $1\/mu_1 := 3$ i $1\/mu_2 := 7$:
+
+$
+  tau_(B, i+1) - tau_(B, i) ~ "Hypo"(mu_1, mu_2).
+$
+
+- El temps entre les arribades d'usuaris a la marquesina segueix una distribució exponencial de paràmetre $lambda_j = rho_j dot mu dot bb(E)(X)$, $j = 1,dots,4$, on $mu = 1\/ bb(E)(tau_B)$:
+
+$
+  tau_(A, i+1) - tau_(A, i) ~ "Exp"(lambda_j) quad j = 1,dots,4.
+$
+
+
+Observem que $lambda_j$ varia per $j = 1,dots,4$ mitjançant els següents valors de $rho_j$:
+#align(center, table(
+  columns: 4,
+  stroke: none,
+  column-gutter: 2em, // Space between items
+  [$rho_1 := 0.3$], [$rho_2 := 0.5333$], [$rho_3 := 0.75$], [$rho_4 := 0.9.$]
+))
+\
+
+A priori podem afirmar que el factor de càrrega $rho_j$ congestiona més el sistema d'espera a mesura que aquest incrementa. El resultat és un sistema d'espera inestable per a tot $j = 1,dots,4$. En efecte, podem calcular la freqüència de servei (d'usuaris) $mu^prime$ com
+$
+  mu^prime = mu dot bb(E)(X) dot bb(E)(tau_C)^(-1)  
+$
+que té unitats de $"usuaris"\/"u. de temps"$. Per tant,
+$
+  mu^prime =mu dot bb(E)(X) dot bb(E)(tau_C)^(-1) = 0.1 dot 10 dot 5^(-1) = 0.2.
+$
+En el millors dels casos tenim
+$
+  lambda_1 = rho_1 dot mu dot bb(E)(X) = 0.3 dot 0.1 dot 10 =  0.3.
+$
+
+Per tant, 
+$
+  rho_1^prime = lambda_1 \/ mu^prime = 0.3\/0.2 = 1.5 > 1.
+$
+
+Observem que això es veu a més a més afectat pel fet que la marquesina no té capacitat finita, de forma que la cua pot crèixer arbitràriament. Per tant, en un horitzó temporal llunyà no podem garantir que el nostre sistema d'espera verifiqui la Llei de Little.
+\
+
+Abans de presentar els resultats de la instància original la modificarem per tal de garantir $rho^prime < 1$ i verificar si es compleix la Llei de Little.
+
+== Validació de la Llei de Little
+
+Es suficient reduïr el factor de càrrega $rho := 0.10$: observem que en aquest cas tenim
+$
+  lambda = rho dot mu dot bb(E)(X) = 0.12 dot 0.1 dot 10 =  0.12,
+$
+i aleshores
+$
+  rho^prime = lambda \/ mu^prime = 0.12\/0.2 = 0.6 < 1.
+$
+El fitxer de configuració de paràmetres en aquest cas és `input_params/little.json`. Fixem en aquest cas un horitzó temporal llunyà de $T = 1,000,000$ i reproduïm $B = 10,000$ simulacions.
+
+\
+
+#figure(
+  caption: [Estimació de magnituds del S.E. (Grup 2, $lambda = 0.12$)],
+  table(
+    columns: (auto, auto),
+    inset: 10pt,
+    align: (col, row) => (if col == 0 { left } else { center }),
+    stroke: none,
+    table.header(
+      [*Magnitud*], [*Estimació (IC 95%)*],
+      table.hline(stroke: 1pt),
+    ),
+    $hat(L)$,   $3.0810 plus.minus 5.82 dot 10^(-4)$,
+    $hat(L_q)$, $1.5472 plus.minus 1.85 dot 10^(-4)$,
+    $hat(W_q)$, $10.4726 plus.minus 1.36 dot 10^(-3)$,
+    $hat(W_s)$, $20.3381 plus.minus 3.62 dot 10^(-3)$,
+    $hat(W)$,   $30.8107 plus.minus 4.59 dot 10^(-3)$,
+    table.hline(stroke: 1pt),
+  ),
+  supplement: "Taula"
+)
+\
+
+Observem que aquesta configuració ens proporciona intervals de confiança molt estrets, especialment per a $hat(L)$ i $hat(W)$, i on tenim $hat(L)\/hat(W) approx 0.0999 approx 0,10 = lambda$, verificant la Llei de Little. No obstant, cal destacar que no succeeix el mateix amb $hat(L_q)\/hat(W_q) approx 0.1477$.
+
+== Resultats de la instància
+
+Finalment, encapsulem el conjunt de paràmetres de la instància del Grup 2 en la carpeta `input_parameters/grup2`, on trobem els fitxers `rho<j>.json`, un per cada factor de càrrega $rho_j$, $j = 1,dots,4$. Seguint l'enunciat de la pràctica fixem $T = 300$, de forma que no estem al límit, a un context on podríem trobar la Llei de Little si el sistema d'espera satisfés les característiques adequades. Donat que en aquest cas l'horitzó temporal és petit, realitzarem en cada cas $B = 10,000,000$ simulacions:
+
+#figure(
+  caption: [Estimació de magnituds del S.E. (Grup 2)],
+  table(
+    columns: (auto, auto, auto, auto, auto),
+    inset: 10pt,
+    align: (col, row) => (if col == 0 { left } else { center }),
+    stroke: none,
+    table.header(
+      [*Magnitud*], 
+      [*$rho = 0.30$*], 
+      [*$rho approx 0.53$*], 
+      [*$rho = 0.75$*], 
+      [*$rho = 0.90$*],
+      table.hline(stroke: 1pt),
+    ),
+    
+    // Row 1: Avg Clients (L)
+    $hat(L)$,   
+    $31.3736 plus.minus 3.59 dot 10^(-3)$,
+    $66.3670 plus.minus 4.65 dot 10^(-3)$,
+    $98.8798 plus.minus 5.48 dot 10^(-3)$,
+    $121.3899 plus.minus 5.99 dot 10^(-3)$,
+    
+    // Row 2: Avg Clients Queue (Lq)
+    $hat(L_q)$, 
+    $18.8941 plus.minus 3.42 dot 10^(-3)$,
+    $53.4332 plus.minus 4.68 dot 10^(-3)$,
+    $85.9048 plus.minus 5.52 dot 10^(-3)$,
+    $108.4048 plus.minus 6.02 dot 10^(-3)$,
+
+    // Row 3: Avg Queue Time (Wq)
+    $hat(W_q)$, 
+    $38.0407 plus.minus 8.15 dot 10^(-3)$,
+    $60.9849 plus.minus 1.03 dot 10^(-2)$,
+    $70.1780 plus.minus 1.14 dot 10^(-2)$,
+    $73.9607 plus.minus 1.20 dot 10^(-2)$,
+
+    // Row 4: Avg Service Time (Ws)
+    $hat(W_s)$, 
+    $76.8470 plus.minus 5.96 dot 10^(-3)$,
+    $78.1376 plus.minus 5.56 dot 10^(-3)$,
+    $78.1898 plus.minus 5.55 dot 10^(-3)$,
+    $78.1955 plus.minus 5.56 dot 10^(-3)$,
+
+    // Row 5: Avg Total Time (W)
+    $hat(W)$,   
+    $114.8877 plus.minus 1.12 dot 10^(-2)$,
+    $139.1225 plus.minus 1.22 dot 10^(-2)$,
+    $148.3678 plus.minus 1.31 dot 10^(-2)$,
+    $152.1562 plus.minus 1.36 dot 10^(-2)$,
+
+    table.hline(stroke: 1pt),
+  ),
+  supplement: "Taula"
+)
+
+\
+
+#text(blue)[
+  TODO: Posar fotos rexulonas de histogrames de $W$ com demana our lord and saviour
+]
 
 #counter(heading).update(0)
 #set heading(numbering: (..nums) => {
