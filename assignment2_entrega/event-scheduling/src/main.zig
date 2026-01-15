@@ -233,7 +233,7 @@ pub fn main() !void {
     try stdout.flush();
 
     if (B == 1) {
-        try stdout.print("Running the simulation once, saving 'traca.txt' and 'usertimes.txt'\n", .{});
+        try stdout.writeAll("Running the simulation once, saving 'traca.txt' and 'usertimes.csv'\n");
         try stdout.flush();
 
         var traca_buffer: [64 * 1024]u8 = undefined;

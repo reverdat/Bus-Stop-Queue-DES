@@ -138,9 +138,9 @@ pub const SimResults = struct {
         try writer.print("{s: <24}: {d} \n", .{ "Events processed", self.processed_events });
         try writer.print("{s: <24}: {d:.4}\n", .{ "Avg Clients (L)", self.average_clients });
         try writer.print("{s: <24}: {d:.4}\n", .{ "Avg Clients Queue (L_q)", self.average_queue_clients });
-        try writer.print("{s: <30}: {d:.4}\n", .{ "Avg Queue Time (W_q)", self.average_queue_clients });
-        try writer.print("{s: <30}: {d:.4}\n", .{ "Avg Service Time (W_s)", self.average_service_time });
-        try writer.print("{s: <30}: {d:.4}\n", .{ "Avg Total Time (W)", self.average_total_time });
+        try writer.print("{s: <24}: {d:.4}\n", .{ "Avg Queue Time (W_q)", self.average_queue_clients });
+        try writer.print("{s: <24}: {d:.4}\n", .{ "Avg Service Time (W_s)", self.average_service_time });
+        try writer.print("{s: <24}: {d:.4}\n", .{ "Avg Total Time (W)", self.average_total_time });
         try writer.print("{s: <24}: {d:.4}\n", .{ "Variance (Var)", self.variance });
         try writer.print("{s: <24}: {d}\n", .{ "Lost passengers", self.lost_passengers });
         try writer.print("{s: <24}: {d}\n", .{ "Lost buses", self.lost_buses });
