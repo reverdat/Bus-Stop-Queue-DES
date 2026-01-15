@@ -1,2 +1,3 @@
 **/report/*.pdf
 .zig-cache/
+**/results
