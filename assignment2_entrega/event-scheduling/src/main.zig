@@ -12,239 +12,14 @@ const heap = @import("structheap.zig");
 const structs = @import("config.zig");
 const loader = @import("loader.zig");
 
+const eventSchedulingBus = @import("simulation.zig").eventSchedulingBus;
+
 const Distribution = structs.Distribution;
 const SimResults = structs.SimResults;
 const SimConfig = structs.SimConfig;
 const Stats = structs.Stats;
 const User = structs.User;
 
-const EventType = enum { arrival, service, boarding };
-
-pub const Event = struct {
-    time: f64,
-    type: EventType,
-    id: u64,
-};
-
-const Metric = enum { queue_time, service_time, total_time };
-
-pub fn computeMeanMetric(bus_stop: ArrayList(User), metric: Metric) f64 {
-    const n = bus_stop.items.len;
-
-    var sum_metric: f64 = 0.0;
-    var count: u64 = 0;
-
-    for (0..n) |i| {
-        const user: *User = &bus_stop.items[i];
-
-        if (user.departure) |_| {
-            const maybe_metric_val: ?f64 = switch (metric) {
-                .queue_time => user.queue_time,
-                .service_time => user.service_time,
-                .total_time => user.total_time,
-            };
-
-            if (maybe_metric_val) |metric_val| {
-                sum_metric += metric_val;
-                count += 1;
-            }
-        }
-    }
-
-    if (count == 0) {
-        return 0.0;
-    }
-
-    return sum_metric / @as(f64, @floatFromInt(count));
-}
-
-pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, traca_writer: ?*Io.Writer, user_writer: ?*Io.Writer) !SimResults {
-    var hp = heap.Heap(Event).init();
-    defer hp.deinit(gpa);
-
-    var processed_events: u64 = 0;
-    var t_clock: f64 = 0.0;
-
-    // variables d'estat globals
-    var num_passengers_queue: u64 = 0;
-    var current_bus_capacity: u64 = 0;
-    var lost_passengers: u64 = 0;
-    var lost_buses: u64 = 0;
-    var realized_bus_capacity: u64 = 0.0;
-
-    var boarding_active: bool = false;
-
-    // stats
-    var area_queue: f64 = 0.0;
-    var area_system: f64 = 0.0;
-    var area_sq: f64 = 0.0;
-
-    var last_event_time: f64 = 0.0;
-    var event_id_counter: u64 = 0;
-
-    // if a zero is passed, make it maxint
-    const queue_max_capacity: u64 = if (config.system_capacity == 0) std.math.maxInt(@TypeOf(config.system_capacity)) else config.system_capacity;
-
-    // primera arribada de passatjer per començar la simulació
-    const t_p = try config.passenger_interarrival.sample(random);
-    event_id_counter += 1;
-    try hp.push(gpa, Event{ .time = t_p, .type = .arrival, .id = event_id_counter });
-
-    // primera arribada de bus per començar la simulació
-    const t_b = try config.bus_interarrival.sample(random);
-    event_id_counter += 1;
-    try hp.push(gpa, Event{ .time = t_b, .type = .service, .id = event_id_counter });
-
-    var bus_stop: ArrayList(User) = .empty;
-    defer bus_stop.deinit(gpa);
-    var first_user_in_queue: usize = 0;
-
-    var current_bus_arrival: f64 = 0.0;
-    var acc_boarding: f64 = 0.0;
-
-    while (t_clock <= config.horizon and hp.len() > 0) : (processed_events += 1) {
-        const next_event = hp.pop().?; // we use ? because we are absolutely sure there will be an element
-        t_clock = next_event.time;
-
-        if (traca_writer) |writer| {
-            try writer.print("Estat {d}: ({d},{d}); t={d:.4}\n", .{ processed_events, num_passengers_queue, current_bus_capacity, t_clock });
-        }
-        const deltat = t_clock - last_event_time;
-
-        const people_on_bus = realized_bus_capacity - current_bus_capacity;
-        const system_size = num_passengers_queue + people_on_bus;
-        area_queue += @as(f64, @floatFromInt(num_passengers_queue)) * deltat; // n_j (t_j - t_i)
-        area_system += @as(f64, @floatFromInt(system_size)) * deltat; // L
-        area_sq += @as(f64, @floatFromInt(system_size * system_size)) * deltat; // n_j**2 (t_j - t_i)
-
-        switch (next_event.type) {
-            EventType.arrival => { // passanger arrives
-
-                event_id_counter += 1;
-                const time_passanger = try config.passenger_interarrival.sample(random);
-                const next_time = t_clock + time_passanger;
-
-                try hp.push(gpa, Event{
-                    .time = next_time,
-                    .type = .arrival, //hostia que guapo
-                    .id = event_id_counter,
-                });
-
-                // if the sistem is full, client is lost
-                if (num_passengers_queue >= queue_max_capacity) {
-                    lost_passengers += 1;
-                } else {
-                    num_passengers_queue += 1; //len de passangers_in_queue
-                    try bus_stop.append(gpa, User{ .id = processed_events, .arrival = t_clock });
-                }
-            },
-            EventType.service => { // bus arrives
-                // si ja hi ha un bus a la parada, poso la memòria a zero
-                const time_bus = try config.bus_interarrival.sample(random);
-
-                if (boarding_active) {
-                    lost_buses += 1;
-                    event_id_counter += 1;
-                    try hp.push(gpa, Event{ .time = t_clock + time_bus, .type = .service, .id = event_id_counter });
-                } else {
-                    // com que no hi ha cap bus, genero la capacitat d'aquest
-                    current_bus_arrival = t_clock;
-                    realized_bus_capacity = try config.bus_capacity.sampleInt(random);
-                    try hp.push(gpa, Event{ .time = t_clock + time_bus, .type = .service, .id = event_id_counter });
-
-                    current_bus_capacity = realized_bus_capacity;
-
-                    event_id_counter += 1;
-
-                    // if we are NOT boarding start the boarding
-                    if (num_passengers_queue > 0 and current_bus_capacity > 0 and boarding_active == false) {
-                        const duration = try config.boarding_time.sample(random);
-
-                        try hp.push(gpa, Event{ .time = t_clock + duration, .type = .boarding, .id = event_id_counter });
-
-                        (&bus_stop.items[first_user_in_queue]).*.boarding_time = duration;
-                        boarding_active = true;
-                    }
-                }
-            },
-            EventType.boarding => { // passatjer ha pujat a l'autobus
-                if (num_passengers_queue > 0 and current_bus_capacity > 0) {
-                    // update leaving time of the queue
-                    const leaving_user: *User = &bus_stop.items[first_user_in_queue];
-                    leaving_user.*.about_to_board = current_bus_arrival + acc_boarding;
-                    leaving_user.*.boarded = leaving_user.*.about_to_board.? + leaving_user.*.boarding_time.?;
-                    acc_boarding += leaving_user.*.boarding_time.?;
-
-                    leaving_user.*.queue_time = leaving_user.*.about_to_board.? - leaving_user.*.arrival;
-                    leaving_user.*.enqueued_time = leaving_user.*.queue_time.? + leaving_user.*.boarding_time.?;
-
-                    first_user_in_queue += 1;
-
-                    num_passengers_queue -= 1;
-                    current_bus_capacity -= 1;
-
-                    // si encara hi ha passatjers a la marquesina i el bus no és ple
-                    if (num_passengers_queue > 0 and current_bus_capacity > 0) {
-                        event_id_counter += 1;
-                        const duration = try config.boarding_time.sample(random);
-
-                        try hp.push(gpa, Event{ .time = t_clock + duration, .type = .boarding, .id = event_id_counter });
-
-                        (&bus_stop.items[first_user_in_queue]).*.boarding_time = duration;
-                    } else {
-                        boarding_active = false; //stop the boearding once there is no passnegers or the bus is full
-
-                        const passengers_on_bus = realized_bus_capacity - current_bus_capacity;
-                        const start_index: usize = first_user_in_queue - passengers_on_bus;
-
-                        for (start_index..first_user_in_queue) |i| {
-                            const user: *User = &bus_stop.items[i];
-                            user.*.departure = t_clock;
-                            user.*.service_time = (t_clock - user.*.about_to_board.?);
-                            user.*.total_time = user.*.queue_time.? + user.*.service_time.?;
-
-                            if (user_writer) |writer| {
-                                try writer.print("{any}\n", .{user.*});
-                            }
-                        }
-                        //if (first_user_in_queue > 0) {
-                        //    bus_stop.replaceRange(gpa, 0, first_user_in_queue, &[_]User{}) catch unreachable;
-                        //    first_user_in_queue = 0;
-                        //}
-
-                        acc_boarding = 0.0;
-                        current_bus_capacity = 0;
-                        realized_bus_capacity = 0;
-                    }
-                }
-            },
-        }
-
-        last_event_time = t_clock;
-    }
-
-    if (traca_writer) |writer| {
-        try writer.flush(); // Don't forget to flush! :)
-    }
-
-    if (user_writer) |writer| {
-        try writer.flush();
-    }
-
-    const L = area_system / t_clock;
-    return SimResults{
-        .average_clients = area_system / t_clock,
-        .variance = (area_sq / t_clock) - L * L,
-        .duration = t_clock,
-        .lost_passengers = lost_passengers,
-        .lost_buses = lost_buses,
-        .processed_events = processed_events,
-        .average_queue_clients = area_queue / t_clock,
-        .average_queue_time = computeMeanMetric(bus_stop, Metric.queue_time),
-        .average_service_time = computeMeanMetric(bus_stop, Metric.service_time),
-        .average_total_time = computeMeanMetric(bus_stop, Metric.total_time),
-    };
-}
 
 /// Hola Arnau! Sóc en Pau, i això és un todo del que ens falta fer :)
 /// 1. Print de la Hypo, Hyper, kerlang, rexp_trunc ##### DONE
@@ -375,8 +150,8 @@ pub fn main() !void {
     const args = try std.process.argsAlloc(gpa);
     defer std.process.argsFree(gpa, args);
 
-    if (args.len != 2) {
-        try stdout.print("Usage: <config_filepath>\n", .{});
+    if (args.len <= 1) {
+        try stdout.print("Usage: <config_filepath> --iterations/-i <int>\n", .{});
         try stdout.flush();
         std.process.exit(0);
     }
@@ -398,7 +173,7 @@ pub fn main() !void {
         try stdout.flush();
         std.process.exit(0);
     }
-
+    
     var prng = Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&seed));
@@ -407,7 +182,8 @@ pub fn main() !void {
     const rng = prng.random();
 
     const config_path = args[1];
-
+    const override_iterations: ?u64 = if (args.len == 4 and (std.mem.eql(u8, args[2], "--iterations") or (std.mem.eql(u8, args[2], "-i")))) try std.fmt.parseInt(u64, args[3], 10) else null; 
+    
     // We use a separate parsing_arena because the JSON parser allocates internal
     // slices (like the 'hypo' array) that must live as long as the config exists.
     var parsing_arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -423,7 +199,8 @@ pub fn main() !void {
 
     const app_config = loaded_data.value;
     const config = app_config.sim_config;
-    const B = app_config.iterations;
+    const B = if (override_iterations) |iterations| iterations else app_config.iterations;
+    //const B = app_config.iterations;
 
     try stdout.print("Loaded configuration from {s}\n", .{config_path});
     try stdout.print("Iterations (B): {d}\n", .{B});
@@ -454,6 +231,7 @@ pub fn main() !void {
         try stdout.print("Time Elapsed: {d:.4} seconds\n", .{seconds});
         try stdout.flush();
     } else {
+
         try stdout.print("Running the simulation {d} times\n", .{B});
         try stdout.flush();
 
@@ -491,8 +269,9 @@ pub fn main() !void {
             Ws_vals[i] = results.average_service_time;
             W_vals[i] = results.average_total_time;
             t_vals[i] = seconds;
-
-            if ((i + 1) % 100 == 0) {
+            
+            const mod = @divTrunc(B, 10);
+            if ((i + 1) % mod == 0) {
                 const checkpoint = global_timer.read();
                 const checkpoint_seconds = @as(f64, @floatFromInt(checkpoint)) / 1_000_000_000.0;
                 try stdout.print("Done {d}/{d} iterations. Time Elapsed {d:.4}s.\n", .{ i + 1, B, checkpoint_seconds });
@@ -519,6 +298,5 @@ pub fn main() !void {
         try stdout.print("{s: <24}: {d:.4} +/- {d:.6} (95% CI)\n", .{ "Avg Total Time (W)", W_stats.mean, W_stats.ci });
         try stdout.print("Total Time Elapsed: {d:.4}s\n", .{total_time});
         try stdout.flush();
-        // }
     }
 }
