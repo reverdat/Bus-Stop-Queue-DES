@@ -37,7 +37,10 @@ pub fn loadConfig(allocator: std.mem.Allocator, file_path: []const u8) !json.Par
     const options = std.json.ParseOptions{ .ignore_unknown_fields = true };
     
     // parsed_result holds the data AND the arena allocator used for strings/slices in the JSON
-    const parsed_result = try std.json.parseFromSlice(AppConfig, allocator, file_content, options);
+    var parsed_result = try std.json.parseFromSlice(AppConfig, allocator, file_content, options);
+    
+    // CONVERT BOARDING TIME IN MINUTES
+    parsed_result.value.sim_config.boarding_time.scaleTime(1.0 / 60.0);
 
     return parsed_result;
 }
@@ -214,7 +217,7 @@ pub fn main() !void {
     const app_config = loaded_data.value;
     const config = app_config.sim_config;
     const B = if (override_iterations) |iterations| iterations else app_config.iterations;
-
+                                                                  
     const seed = if (app_config.seed) |s| s else blk: {
         var os_seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&os_seed));
@@ -252,6 +255,7 @@ pub fn main() !void {
         try stdout.print("{f}\n", .{results});
         try stdout.print("Time Elapsed: {d:.4} seconds\n", .{seconds});
         try stdout.flush();
+    
     } else {
 
         try stdout.print("Running the simulation {d} times\n", .{B});

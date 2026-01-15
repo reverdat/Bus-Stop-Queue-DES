@@ -9,12 +9,13 @@ const sampling = @import("rng.zig");
 
 /// Okay, aquí estaria la màgia...
 /// En essència la unió només conté una de les tres quan s'inicialitza
+/// ULL: la hypo i els rates de la hyper NO SON CONST pel tema d'escalar-ho!
 pub const Distribution = union(enum) {
     constant: f64,
     exponential: f64,
     uniform: struct { min: f64, max: f64 },
-    hypo: []const f64, // directament les esperances
-    hyper: struct { probs: []const f64, rates: []const f64 }, // probabilitats del branching i els ratis de cada exponencial
+    hypo: []f64, // directament les esperances
+    hyper: struct { probs: []const f64, rates: []f64 }, // probabilitats del branching i els ratis de cada exponencial
     erlang: struct { k: usize, lambda: f64 }, // shape, scale
     exp_trunc: struct { lambda: f64, max: f64 },
 
@@ -34,6 +35,30 @@ pub const Distribution = union(enum) {
     pub fn sampleInt(self: Distribution, rng: Random) !u64 {
         const samp = try self.sample(rng);
         return @as(u64, @intFromFloat(@round(samp)));
+    }
+
+    pub fn scaleTime(self: *Distribution, factor: f64) void {
+        switch (self.*) {
+            .constant => |*val| val.* *= factor,
+            
+            .uniform => |*u| {
+                u.min *= factor;
+                u.max *= factor;
+            },
+
+            .exponential => |*lambda| lambda.* /= factor,
+            .erlang => |*e| e.lambda /= factor, // k (shape) stays same
+            .hypo => |rates| {
+                for (rates) |*r| r.* /= factor;
+            },
+            .hyper => |rates_probs| {
+                for (rates_probs.rates) |*r| r.* /= factor;
+            },
+            .exp_trunc => |*et| {
+                et.lambda /= factor; // Rate scales inversely
+                et.max *= factor;    // Max limit is a Time unit, so it scales directly
+            },
+        }
     }
 
     pub fn format(
@@ -111,11 +136,11 @@ pub const SimResults = struct {
         try writer.writeAll("+-------------------+\n");
         try writer.print("{s: <24}: {d:.4} \n", .{ "Duration", self.duration });
         try writer.print("{s: <24}: {d} \n", .{ "Events processed", self.processed_events });
-        try writer.print("{s: <24}: {d:.4}\n", .{ "Average Clients (L)", self.average_clients });
-        try writer.print("{s: <24}: {d:.4}\n", .{ "Average Clients Queue (L_q)", self.average_queue_clients });
-        try writer.print("{s: <30}: {d:.4}\n", .{ "Average Queue Time (W_q)", self.average_queue_clients });
-        try writer.print("{s: <30}: {d:.4}\n", .{ "Average Service Time (W_s)", self.average_service_time });
-        try writer.print("{s: <30}: {d:.4}\n", .{ "Average Total Time (W)", self.average_total_time });
+        try writer.print("{s: <24}: {d:.4}\n", .{ "Avg Clients (L)", self.average_clients });
+        try writer.print("{s: <24}: {d:.4}\n", .{ "Avg Clients Queue (L_q)", self.average_queue_clients });
+        try writer.print("{s: <30}: {d:.4}\n", .{ "Avg Queue Time (W_q)", self.average_queue_clients });
+        try writer.print("{s: <30}: {d:.4}\n", .{ "Avg Service Time (W_s)", self.average_service_time });
+        try writer.print("{s: <30}: {d:.4}\n", .{ "Avg Total Time (W)", self.average_total_time });
         try writer.print("{s: <24}: {d:.4}\n", .{ "Variance (Var)", self.variance });
         try writer.print("{s: <24}: {d}\n", .{ "Lost passengers", self.lost_passengers });
         try writer.print("{s: <24}: {d}\n", .{ "Lost buses", self.lost_buses });
