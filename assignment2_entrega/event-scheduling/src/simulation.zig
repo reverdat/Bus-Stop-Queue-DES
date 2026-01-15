@@ -1,21 +1,16 @@
 const std = @import("std");
 
-const json = std.json;
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 const Random = std.Random;
-const eql = std.mem.eql;
-const Timer = std.time.Timer;
 const Io = std.Io;
 
 const heap = @import("structheap.zig");
 const structs = @import("config.zig");
-const loader = @import("loader.zig");
 
 const Distribution = structs.Distribution;
 const SimResults = structs.SimResults;
 const SimConfig = structs.SimConfig;
-const Stats = structs.Stats;
 const User = structs.User;
 
 
@@ -26,39 +21,6 @@ pub const Event = struct {
     type: EventType,
     id: u64,
 };
-
-const Metric = enum { queue_time, service_time, total_time };
-
-pub fn computeMeanMetric(bus_stop: ArrayList(User), metric: Metric) f64 {
-    const n = bus_stop.items.len;
-
-    var sum_metric: f64 = 0.0;
-    var count: u64 = 0;
-
-    for (0..n) |i| {
-        const user: *User = &bus_stop.items[i];
-
-        if (user.departure) |_| {
-            const maybe_metric_val: ?f64 = switch (metric) {
-                .queue_time => user.queue_time,
-                .service_time => user.service_time,
-                .total_time => user.total_time,
-            };
-
-            if (maybe_metric_val) |metric_val| {
-                sum_metric += metric_val;
-                count += 1;
-            }
-        }
-    }
-
-    if (count == 0) {
-        return 0.0;
-    }
-
-    return sum_metric / @as(f64, @floatFromInt(count));
-}
-
 
 pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, traca_writer: ?*Io.Writer, user_writer: ?*Io.Writer) !SimResults {
     var hp = heap.Heap(Event).init();

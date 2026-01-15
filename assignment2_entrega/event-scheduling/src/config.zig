@@ -58,8 +58,8 @@ pub const Distribution = union(enum) {
                     if (i != n - 1) try writer.print("λ{d}={d:.1}, p{d}={d:.1}, ", .{ i, rates_probs.rates[i], i, rates_probs.probs[i] }) else try writer.print("λ{d}={d:.1}, p{d}={d:.1})", .{ i, rates_probs.rates[i], i, rates_probs.probs[i] });
                 }
             },
-            .erlang => |k_rate| try writer.print("Erl(k={d}, λ={d:.1})\n", .{ k_rate.k, k_rate.lambda }),
-            .exp_trunc => |rate_max| try writer.print("ExpTrunc(λ={d:.1}, max={d:.1})\n", .{ rate_max.lambda, rate_max.max }),
+            .erlang => |k_rate| try writer.print("Erl(k={d}, λ={d:.1})", .{ k_rate.k, k_rate.lambda }),
+            .exp_trunc => |rate_max| try writer.print("ExpTrunc(λ={d:.1}, max={d:.1})", .{ rate_max.lambda, rate_max.max }),
         }
     }
 };

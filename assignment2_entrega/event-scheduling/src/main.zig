@@ -10,7 +10,6 @@ const Io = std.Io;
 
 const heap = @import("structheap.zig");
 const structs = @import("config.zig");
-const loader = @import("loader.zig");
 
 const eventSchedulingBus = @import("simulation.zig").eventSchedulingBus;
 
@@ -20,6 +19,28 @@ const SimConfig = structs.SimConfig;
 const Stats = structs.Stats;
 const User = structs.User;
 
+pub const AppConfig = struct {
+    iterations: usize,
+    sim_config: SimConfig,
+    seed: ?u64,
+};
+
+pub fn loadConfig(allocator: std.mem.Allocator, file_path: []const u8) !json.Parsed(AppConfig) {
+    const file = try std.fs.cwd().openFile(file_path, .{});
+    defer file.close();
+
+    const max_size = 1024 * 1024; // 1MB max config file
+    const file_content = try file.readToEndAlloc(allocator, max_size);
+    defer allocator.free(file_content);
+
+    // We use .ignore_unknown_fields = true so comments or extra metadata in JSON don't crash it
+    const options = std.json.ParseOptions{ .ignore_unknown_fields = true };
+    
+    // parsed_result holds the data AND the arena allocator used for strings/slices in the JSON
+    const parsed_result = try std.json.parseFromSlice(AppConfig, allocator, file_content, options);
+
+    return parsed_result;
+}
 
 /// Hola Arnau! Sóc en Pau, i això és un todo del que ens falta fer :)
 /// 1. Print de la Hypo, Hyper, kerlang, rexp_trunc ##### DONE
@@ -174,14 +195,7 @@ pub fn main() !void {
         std.process.exit(0);
     }
     
-    var prng = Random.DefaultPrng.init(blk: {
-        var seed: u64 = undefined;
-        try std.posix.getrandom(std.mem.asBytes(&seed));
-        break :blk seed;
-    });
-    const rng = prng.random();
-
-    const config_path = args[1];
+        const config_path = args[1];
     const override_iterations: ?u64 = if (args.len == 4 and (std.mem.eql(u8, args[2], "--iterations") or (std.mem.eql(u8, args[2], "-i")))) try std.fmt.parseInt(u64, args[3], 10) else null; 
     
     // We use a separate parsing_arena because the JSON parser allocates internal
@@ -190,7 +204,7 @@ pub fn main() !void {
     defer parsing_arena.deinit();
     const parsing_allocator = parsing_arena.allocator();
 
-    const loaded_data = loader.loadConfig(parsing_allocator, config_path) catch |err| {
+    const loaded_data = loadConfig(parsing_allocator, config_path) catch |err| {
         try stderr.print("Error parsing the JSON: {any}", .{err});
         try stderr.flush();
         std.process.exit(0);
@@ -200,7 +214,15 @@ pub fn main() !void {
     const app_config = loaded_data.value;
     const config = app_config.sim_config;
     const B = if (override_iterations) |iterations| iterations else app_config.iterations;
-    //const B = app_config.iterations;
+
+    const seed = if (app_config.seed) |s| s else blk: {
+        var os_seed: u64 = undefined;
+        try std.posix.getrandom(std.mem.asBytes(&os_seed));
+        break :blk os_seed;
+    };
+
+    var prng = Random.DefaultPrng.init(seed);
+    const rng = prng.random();
 
     try stdout.print("Loaded configuration from {s}\n", .{config_path});
     try stdout.print("Iterations (B): {d}\n", .{B});
