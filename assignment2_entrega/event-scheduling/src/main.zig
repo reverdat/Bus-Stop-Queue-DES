@@ -45,7 +45,7 @@ pub fn loadConfig(allocator: std.mem.Allocator, file_path: []const u8) !json.Par
 /// Hola Arnau! Sóc en Pau, i això és un todo del que ens falta fer :)
 /// 1. Print de la Hypo, Hyper, kerlang, rexp_trunc ##### DONE
 /// 2. L'string de help, igual que comprovar si algun dels arguments és help (està commentat al main) ##### DONE
-/// 3. Calcular la mitjana dels waittimes dins de la funció i afergir-ho a sim results. Així i tot, l'anàlisi de dades el fem a python
+/// 3. Calcular la mitjana dels waittimes dins de la funció i afergir-ho a sim results. Així i tot, l'anàlisi de dades el fem a python ### DONE
 /// 4. Mirar si podem escriure millor els strings dels usuaris mitjançant un format (eg, podem fer que sigui un csv si ho fem cleverly!)
 /// 5. Ara mateix el tema de les unitats és un caos. Els json estan TOTS ens minuts, però no sé si és la mateixa pregunta
 /// NOTA: ara, per no posar limits al sistema, system_capacity ha de ser 0 (es posa a maxInt a dins de la funció)
@@ -195,7 +195,7 @@ pub fn main() !void {
         std.process.exit(0);
     }
     
-        const config_path = args[1];
+    const config_path = args[1];
     const override_iterations: ?u64 = if (args.len == 4 and (std.mem.eql(u8, args[2], "--iterations") or (std.mem.eql(u8, args[2], "-i")))) try std.fmt.parseInt(u64, args[3], 10) else null; 
     
     // We use a separate parsing_arena because the JSON parser allocates internal
@@ -239,7 +239,7 @@ pub fn main() !void {
         const twriter = &traca_writer.interface;
 
         var user_buffer: [64 * 1024]u8 = undefined;
-        const user_file = try std.fs.cwd().createFile("usertimes.txt", .{ .read = false });
+        const user_file = try std.fs.cwd().createFile("usertimes.csv", .{ .read = false });
         var user_writer = user_file.writer(&user_buffer);
         const uwriter = &user_writer.interface;
 

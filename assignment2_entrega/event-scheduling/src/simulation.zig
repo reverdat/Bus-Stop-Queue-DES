@@ -13,7 +13,6 @@ const SimResults = structs.SimResults;
 const SimConfig = structs.SimConfig;
 const User = structs.User;
 
-
 const EventType = enum { arrival, service, boarding };
 
 pub const Event = struct {
@@ -71,6 +70,11 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
 
     var current_bus_arrival: f64 = 0.0;
     var acc_boarding: f64 = 0.0;
+    
+    // write the header
+    if (user_writer) |writer| {
+        try User.formatCsvHeader(writer);
+    }
 
     while (t_clock <= config.horizon and hp.len() > 0) : (processed_events += 1) {
         const next_event = hp.pop().?; // we use ? because we are absolutely sure there will be an element
@@ -180,7 +184,7 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
                             total_served_passengers += 1;
 
                             if (user_writer) |writer| {
-                                try writer.print("{any}\n", .{user.*});
+                                try user.*.formatCsv(writer);
                             }
                         }
 
@@ -222,6 +226,7 @@ pub fn eventSchedulingBus(gpa: Allocator, random: Random, config: SimConfig, tra
         .average_queue_time = sum_queue_time / f_served,
         .average_service_time = sum_service_time / f_served,
         .average_total_time = sum_total_time / f_served,
-    };}
+    };
+}
 
 

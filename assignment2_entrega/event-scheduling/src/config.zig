@@ -160,8 +160,8 @@ pub const User = struct {
 
     pub fn format(
         self: @This(),
-        writer: *std.Io.Writer,
-    ) std.Io.Writer.Error!void {
+        writer: *Io.Writer,
+    ) Io.Writer.Error!void {
         try writer.print("User {d}\n", .{self.id});
         try writer.print("{s} at {f}\n", .{ "Arrived", self.arrival });
 
@@ -188,4 +188,34 @@ pub const User = struct {
 
         return;
     }
+
+    pub fn formatCsvHeader(writer: *Io.Writer) Io.Writer.Error!void {
+        // una miqueta de type reflection jeje
+        const user_info = @typeInfo(@This());
+        
+        inline for (user_info.@"struct".fields) |field| {
+            const name = field.name;
+            try writer.print("{s},", .{name});
+        }
+        try writer.writeAll("\n");
+
+        return;
+    }
+
+    pub fn formatCsv(
+        self: @This(),
+        writer: *Io.Writer,
+    ) Io.Writer.Error!void {
+        const user_info = @typeInfo(@This()); 
+
+        inline for (user_info.@"struct".fields) |field| {
+            const name = field.name;
+            const val = @field(self, name);
+
+            try writer.print("{any},", .{val});
+        }
+        try writer.writeAll("\n");
+        return;
+    }
+    
 };
