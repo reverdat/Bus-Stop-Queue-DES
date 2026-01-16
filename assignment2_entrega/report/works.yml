@@ -1,3 +1,15 @@
+fiems-2025-queues-survey:
+  type: article
+  title: "Queues with Working Vacations: A Survey"
+  author: "Fiems, Dieter"
+  date: 2025-05-23
+  journal: "Mathematics"
+  volume: 13
+  issue: 11
+  pages: 1894
+  url: "https://doi.org/10.3390/math13111894"
+  date-accessed: 2026-01-16
+
 zig:
   type: Web
   title: The Zig Programming Language

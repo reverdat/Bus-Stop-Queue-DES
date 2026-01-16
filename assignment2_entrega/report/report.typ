@@ -15,7 +15,7 @@
 )
 
 #set document(
-  title: [Estimació dels paràmetres de la distribució Weibull]
+  title: [Simluació Marquesina Autobus]
 )
 
 //#set math.equation(numbering: "1.")
@@ -27,7 +27,7 @@
   *Simulació del sistema d'espera d'una parada d'autobús mitjançant _Event-Scheduling_* 
 ])
 #align(center, text(16pt)[
-  _Entrega_ 
+  _Entrega Final_ 
 ])
 
 
@@ -45,7 +45,9 @@
 
 L'objectiu principal d'aquesta pràctica és el disseny, implementació i anàlisi d'un motor de simulació d'esdeveniments discrets (Discrete Event Simulation) aplicat a un sistema d'espera d'una parada d'autobús. En aquest sistema interaccionen dues entitats principals, els usuaris (clients) i els autobusos (servidors), sota condicions d'incertesa en els temps d'arribada i capacitats.
 
-#text(blue)[Aquest document constitueix és la preentrega del treball. La finalitat d'aquesta fase inicial no és encara simular el sistema amb tota la seva complexitat estocàstica final, sinó establir una base sòlida de programari i validar-ne la correcció (verificació del model). Per aconseguir-ho, s'assumeix un conjunt d'hipòtesis simplificadores, com ara temps de servei nuls i taxes exponencials, que permeten modelitzar la parada teòricament com una cua markoviana $M\/M^([X])\/1\/K$. Aquesta reducció és crucial en aquesta etapa, ja que ens permet obtenir solucions analítiques exactes de l'estat estacionari i utilitzar-les com a referència per auditar la precisió del nostre simulador.]
+#text(blue)[
+Aquest document constitueix és la preentrega del treball. La finalitat d'aquesta fase inicial no és encara simular el sistema amb tota la seva complexitat estocàstica final, sinó establir una base sòlida de programari i validar-ne la correcció (verificació del model). Per aconseguir-ho, s'assumeix un conjunt d'hipòtesis simplificadores, com ara temps de servei nuls i taxes exponencials, que permeten modelitzar la parada teòricament com una cua markoviana $M\/M^([X])\/1\/K$. Aquesta reducció és crucial en aquesta etapa, ja que ens permet obtenir solucions analítiques exactes de l'estat estacionari i utilitzar-les com a referència per auditar la precisió del nostre simulador.
+]
 
 La metodologia de treball s'ha basat en la implementació de l'algorisme de programació d'esdeveniments (_Event-Scheduling_) utilitzant el llenguatge de sistemes Zig, prioritzant l'eficiència computacional i la gestió robusta de memòria per a la generació de trajectòries llargues.
 
@@ -58,9 +60,9 @@ En aquesta secció formalitzem el funcionament de la parada d'autobús. El siste
 Aquesta secció a més a més manté la base teòrica presentada com a preentrega, que ens ha servit per fonamentar el motor de simulació mitjançant la simplificació del problema com a una cua $M\/\M^([X])\/1\/K$, ja que permet assolir un estat estacionari on la distribució estacionària es pot resoldre analíticament, obtenint així una _ground-truth_ referent davant de la complexitat que suposa el problema.
 
 == Dinàmica i Components
-El sistema d'espera es tracta d'una parada d'autobús on arriben usuaris que esperen a que arribi un autobús per tal de pujar-hi i eventualment marxar. Es poden definir dos principals components: la marquesina (arribades) i l'autobús (serveis).
+El sistema d'espera es tracta d'una parada d'autobús on arriben usuaris que esperen a que arribi un autobús per tal de pujar-hi i marxar. Es poden definir dues components principals: la marquesina (arribades) i l'autobús (serveis).
 \
-1. *Marquesina*: Es tracta d'una plataforma de capacitat finita $K$ on els usuaris arriben de forma individual en un temps aleatori $tau_A$ i esperen a ser servits per un autobús. S'assumeix que els usuaris són respectuossos i s'ordenen en una cua per ordre d'arribada per tal de pujar a l'autobús seguint la doctrina FIFO (First-In First-Out). Si en un determinat moment la cua conté $K$ usuaris i arriba un de nou, aquest no es posa a la cua, sinó que és descartat.
+1. *Marquesina*: Es tracta d'una plataforma de capacitat $K$ on els usuaris arriben de individualment amb temps aleatori $tau_A$ i esperen a ser servits per un autobús. S'assumeix que els usuaris són respectuossos i s'ordenen en una cua per ordre d'arribada per tal de pujar a l'autobús seguint la doctrina FIFO (First-In First-Out). Si en un determinat moment la cua conté $K$ usuaris i arriba un de nou, aquest no entra al sistema, sinó que és descartat.
 2. *Autobús*: És l'únic servidor del sistema d'espera. Arriba en un temps aleatori a la parada $tau_B$ i amb una capacitat $X$. Permet començar l'embarcament dels usuaris esperant a la marquesina, els quals triguen a pujar a l'autobús un temps aleatori $tau_C$. El bus marxa de la parada només quan exhaureix la seva capacitat o bé quan no queden usuaris esperant a la marquesina.
 \
 
@@ -68,8 +70,54 @@ El sistema d'espera es tracta d'una parada d'autobús on arriben usuaris que esp
   Aprofitem per extendre aquest apartat per definir en detall què és $L$, $L_q$, $W$, $W_s$ i $W_q$.
 ]
 
-== Modelització en cua
-El sistema d'espera descrit anteriorment es pot identificar amb una cua $M\/\M^([X])\/1\/K$ mitjançant una serie de hipòtesis que es defineixen a continuació. A continuació es proporciona una simple demostració d'aquesta afirmació que no busca ser rigorosa:
+== Modelització
+
+#text(blue)[
+  He tingut una miqueta de habbit hole amb això. resulta que aquestes cues en bulk son un tipus de cua conegut, per tant és classificable.
+
+  Tenim que aquest tipus de cues son amb "vacances" ja que els servidor atent no regularment (quan arriba l'autobus) i el temps entre busos és exponencial. Les vacances poden ser
+  - múltiples: el servidor marxa, si quan torna no hi ha ningú torna a fer unes altres vacances
+  - simple: el servidor marxa, si quan torna no hi ha ningú a la cua es manté allà.
+
+  Així i tot, la idea seria que la cua és això, concretament pel grup 2
+
+  $M\/G^((Y))\/1\/"Vac" "amb multiples vacances"$
+  
+  - M: temps entre arribades d'usuaris -> exponencial normal ergo M
+  - G: General, ja que pot ser diverses coses segons Don Codina.
+  - Y: temps de pujada de passatgers: Y és perque la batchsize és random (la capacitat del bus)
+  - 1: un servidor
+  - Vac: cada quan "retorna" o n'arriba un de nou vaja de busos. Això és la Hypo-Exponencial
+  
+  les fonts d'això són... complicades xd. Era tot tan dispers que he fet un deep research amb el gemini, perque els llibres que hi havia sobre el tema eren massa teòrics i no m'explicaven com classifica-les
+  
+  Si et poses perepunyetes, crec que la M pot posar-se com $"GI"$, que és general interarrival si en algun moment no és exponencial, però no és el nostre cas (en el grup dos)
+
+  SUPER CONCRETAMENT, la del grup dos pot ser això: $M\/G^((Y))\/1\/K\/"Hypo"$. Diguem-ne que és complicat
+
+  PROPOSTA EN NET:
+]
+
+#text(red)[
+
+  El sistema d'espera descrit anteriorment es pot identficar de manera general amb $"GI"\/G^((Y))\/1\/K\/"Vac" "amb vacances múltiples"$ on cada una de les magnituds representa el següent:
+  - GI: el temps entre dues arribades segueix una distribució en genera.
+  - $G^((Y))$: el servei és en _bulk_, concretament depen d'una variable aleatòria $Y$.
+  - $1$: Només un servidor, els busos arriben d'un en un.
+  - $K$: capacitat màxima d'usuaris al sistema.
+  - $"Vac"$: com es comporta el servidor respecte els usuaris. Hi ha dos tipus de vacances: múltiples si quan no hi ha ningú a la cua i el servidor arriba, aquest s'espera a els següents usuaris, o simple, el servidor s'espera a servir usuaris encara que quan arribi no n'hi hagi cap.
+
+  Més concretament, el sistema en el que avaluarem la simulació (seguint el proporcionat a classe) és $M\/G^((Y))\/1\/K\/"Hypo" "amb vacances multiples"$, on 
+  - El temps d'arribada entre dos usuaris consecutius a la marquesina és $tau_(A, i+1) - tau_(A, i)$, és a dir $M ~ "Exp"(lambda)$
+  - La capacitat dels autobusos és una exponencial truncada $Y ~ "TuncExp"(40) = min{40, "Exp"(lambda)}$
+  - Només té un servidor simulaniament
+  - La capacitat del sistema és infinita
+  - El temps d'arribada entre bus i bus segueix una Hypo-Exponencial, definida com
+
+  TODO DEFINICIÓ de la hypoexponencial en latex
+]
+
+El sistema d'espera descrit anteriorment es pot identificar amb una cua amb working vacations, amb la següent notació $$ mitjançant una serie de hipòtesis que es defineixen a continuació. A continuació es proporciona una simple demostració d'aquesta afirmació que no busca ser rigorosa:
 1. El temps entre dues arribades d'usuaris consecutives a la marquesina $tau_(A, i+1) - tau_(A, i)$ és una v.a. que segueix una llei exponencial de paràmetre fix $lambda$.
 2. El temps d'arribada entre busos a la parada $tau_(B, i+1) - tau_(B, i)$ és una v.a. que segueix una llei exponencial de paràmetre fix $mu$.
 3. El temps que triga un usuari a pujar de la marquesina $tau_C$ al bus és una v.a. degenerada i de valor constant $nu approx 0$.
@@ -116,6 +164,9 @@ Una representació general del diagrama de transicions de la parada d'autobús �
 
 == Estat estacionari i la Llei de Little
 
+#text(blue)[
+  HOLA ARNAU :D Jo trauria tot aquest apartat explicant-ho tot i ho resumiria a un apartat entre la implementació i els resultats que es digui == Test/Verificacions, què et sembla?
+]
 El fet que el comportament teòric del sistema d'espera de la parada d'autobús sigui equivalent a una cua $M$/$M^([X])$/$1$/$K$ sota aquestes condicions ens permet resoldre les equacions del seu estat estacionari de la cadena de Màrkov asssociada.
 
 Per calcular les probabilitats d'estat estacionari $P_n$, plantegem les equacions d'equilibri global de la cadena de Markov contínua. L'estructura de transicions dona lloc al sistema lineal $Q^T P = 0$ juntament amb la normalització $sum_(n=0)^K P_n = 1$ i $P_n >= 0$. D'acord amb l'enunciat de la preentrega, a partir d'ara fixem la capacitat de l'autobús com a una v.a. constant $X equiv c = 3$ i la marquesina $K = 9$. Formalment, hem de resoldre el sistema d'equacions:
@@ -147,31 +198,51 @@ Referir-se a l'@app:implementacions_extres per veure com resoldre el sistema com
 
 = Implementació
 
-Hem simulat el sistema $M\/M^([X])\/1\/K$ mitjançant l'algorisme _Event-Scheduling_, que consisteix en que cada vegada que un esdeveniment d'un tipus concret succeeix, en generem un del mateix tipus per mantenir l'algorisme funcionant, fins que un dels esdeveniments superi l'horitzó temporal no sent atès mai.
+Hem simulat el sistema de la marquesina mitjançant l'algorisme _Event-Scheduling_, que consisteix en que cada vegada que un esdeveniment d'un tipus concret succeeix, en generem un del mateix tipus per mantenir l'algorisme funcionant, fins que un dels esdeveniments superi l'horitzó temporal, no sent atès mai.
 
+Hem escollit Zig @zig com el llenguatge per a implementar l'algorisme. Zig és un llenguatge de sistemes amb gestió de memòria manual i control de flux i memòria explícit, i tot i no tenir una _release_ estable, és absolutament funcional per a la gran majoria de casos d'ús. Hem escollit aquest llenguatge ja que al ser una simulació una tasca relativament exigent per a horitzons llargs o per a múltiples repeticions, ens voliem allunyar de llenguatges interpretats com Python o R, que haguessin donat resultats amb gran marge de millor segons l'òptim a nivell de temps i rendiment. També hem escollit usar Zig sobre C, ja que la filosofia de Zig és extremadament semblant a la de C (gestió de memòria manual i simplicitat) però amb sensibilitats modernes que prevenen molts dels problemes comuns que té C: violacions de segment, indeterminacions en codi i l'ús de `make` per a compilar el projecte.
 
-Hem escollit Zig @zig com el llenguatge per a implementar l'algorisme. Zig és un llenguatge de sistemes amb gestió de memòria manual i control de flux i memòria explícit, i tot i no tenir una _release_ estable, és absolutament funcional per a la gran majoria de casos d'ús. Hem escollit aquest llenguatge ja que al ser una simulació una tasca relativament exigent per a horitzons llargs o per a múltiples repeticions, ens voliem allunyar de llenguatges interpretats com Python o R, que haguessin donat resultats molt llunys a l'òptim a nivell de temps i rendiment. També hem escollit usar Zig sobre C, ja que la filosofia de Zig és extremadament semblant a la de C (gestió de memòria manual i simplicitat) però amb sensibilitats modernes que prevenen molts dels problemes comuns que té C: violacions de segment, indeterminacions en codi i l'ús de `make` per a compilar el projecte.
+*Min-Heap per l'accés als esdeveniments*
 
 L'algorisme _Event-Scheduling_ es basa en mantenir una llista ordenada dels esdeveniments generats segons el temps, i processar sempre el de menor temps. Per continuar l'algorisme, sempre que es processi un esdevieniment de tipus A, se'n genera un altre al futur i es guarda a la llista, de manera que en algun moment es traurà de la llista i serà processat, mantenint el bucle. Sobre la implementació d'aquesta llista - part més troncal de l'algorisme- la primera consideració és descartar l'ús d'una array o `ArrayList` per a mantenir els esdeveniments a memòria, ja que només es necessita l'esdeveniment amb el temps més petit. L'ús de qualsevol tipus d'estructura de dades estil llista implicaria una inserció a la llista de cost $O(n)$, ja que s'haurien de desplaçar tots els elements de la llista una posició per a fer lloc al nou. L'avantatge de l'ús d'una llista ordenada és que té un accés molt ràpid, $O(log_2(n))$ ja que només hem de cercar la llista un cop.
 
 En el cas de l'_Event-Scheduling_ no hem d'accedir a un element qualsevol, sinó que només hem d'accedir al primer element - el més pròxim al temps actual. Per tant, hem emprat una implementació de l'estructura Heap @heap, que guarda els elements sense ordre, però garanteix que el primer element de la estructura sempre serà el de menor temps, donant-nos un accés de $O(1)$. En comparació amb la llista, també guanyem en inserció, ja que un heap té un cost d'accés de $O(log_2(n))$ al usar una estructura d'arbre binari per emmagatzemar les dades. El heap és la millor estructura per aquest problema, ja que els requeriments que tenim són als d'accedir al mínim element el més ràpid possible, sense necessitat d'accedir o eliminar un esdeveniment qualsevol. Això sí, si que hem emprat una `ArrayList` per a guardar-nos la traça del problema.
 
-Tornant al cas concret del problema que ens ocupa, el problema té tres tipus d'esdeveniments (Arribada, Servei, Embarcament, però té quatre paràmetres aleatòris: rati d'arribades ($lambda$), rati de serveis ($mu$), capacitat del bus $X$ i temps d'embarcament. Tot i tenir les assumpcions d'una cua $M$/$M^([X])$/$1$/$K$ en aquesta entrega, hem creat estructures per a fer generals aqustes quatre magnituds aleatories per qualsevol tipus de distribució, i no haver de tocar la lògica de l'algorisme. És a dir, la lògica i les distribucions dels paràmetres estan completament desacoplades al codi. Això ho hem aconseguit mitjançant les dues estructures següents:
+*Descacoblament Distribució-Lògica*
 
+Tornant al cas concret del problema que ens ocupa, el problema té tres tipus d'esdeveniments (Arribada, Servei, Embarcament, però té quatre paràmetres aleatòris: rati d'arribades ($lambda$), rati de serveis ($mu$), capacitat del bus $C$ i temps d'embarcament $Y$, seguint totes una distribució. Hem aconseguit desacoplar completament la implementació i la lògica de l'algorisme mitjançant una unió amb tots els tipus possibles que es vulguin probar. Adicionalment de la Constant, Uniforme i Exponencial, s'han afegit la Exponencial truncada, la Hypo-Exponencial, la Hyper-Exponencial i la K-Erlang. L  hem emprat una estructures generals aqustes quatre magnituds aleatories per qualsevol tipus de distribució, i no haver de tocar la lògica de l'algorisme. És a dir, la lògica i les distribucions dels paràmetres estan completament desacoplades al codi. Això ho hem aconseguit mitjançant l'estructura @distribution.
+
+#figure(
 ```zig
 pub const Distribution = union(enum) {
     constant: f64,
     exponential: f64,
     uniform: struct { min: f64, max: f64 },
+    hypo: []f64, // directament les esperances
+    hyper: struct { probs: []const f64, rates: []f64 }, // probabilitats del branching i els ratis de cada exponencial
+    erlang: struct { k: usize, lambda: f64 }, // shape, scale
+    exp_trunc: struct { lambda: f64, max: f64 },
 
     pub fn sample(self: Distribution, rng: Random) !f64 {
         switch (self) {
             .constant => |val| return val,
             .exponential => |lambda| return sampling.rexp(f64, lambda, rng),
             .uniform => |p| return try sampling.runif(f64, p.min, p.max, rng),
+            .hypo => |rates| return sampling.rhypo(f64, rates, rng),
+            .hyper => |p| return sampling.rhyper(f64, p.probs, p.rates, rng),
+            .erlang => |p| return sampling.rerlang(f64, p.k, p.lambda, rng),
+            .exp_trunc => |p| return @max(sampling.rexp(f64, p.lambda, rng), p.max),
         }
     }
+}
+```,
+caption: [Definició de la Unió Distribution]
+) <distribution>
 
+`Distribution` és una unió, és a dir, que quan s'instacii serà un dels tipus definits just sota l'estructura. La funció sample, implementa en cadascun d'aquests casos la generació d'un nombre aleatòri d'una de les distribucions ja dites. `sampling` concretament és el fitxer `rng.zig`, on hem implementat la definició de totes les magnituds. Aleshores, la funció que implementa l'algorisme al fitxer `main.zig` rep d'entrada un `SimConfig`, on totes les magintuds aleatòries son de tipus distribució, tal com es mostra a @simconfig.
+
+#figure(
+```zig
 pub const SimConfig = struct {
     passenger_interarrival: Distribution,
     bus_interarrival: Distribution,
@@ -179,23 +250,109 @@ pub const SimConfig = struct {
     boarding_time: Distribution,
     system_capacity: u64,
     horizon: f64,
-};
-```
+}
+```,
+caption: [Definició de l'estructura SimConfig ]
+) <simconfig>
 
-`Distribution` és una unió, és a dir, que quan s'instacii serà un dels tipus definits `constant, exponential, uniform`. La funció sample, implementa en cadascun d'aquests casos la generació d'un nombre aleatòri d'una de les distribucions ja dites. `sampling` concretament és el fitxer `rng.zig`, on hem implementat l'exponencial mitjançant el mètode de la inversa. Aleshores, la funció que implementa l'algorisme al fitxer `main.zig` rep d'entrada un `SimConfig`, amb tots els paràmetres com a distribució, especificant exactament quina s'ha d'executar, tal com es mostra a continuació:
 
+*Entrada de paràmetres*
+
+Comparat amb la preentrega, no és senzill introduïr una Hipoexponencial o una K-Erlang mitjançant la terminal, així que hem implementat un JSON on s'ha d'introduïr l'estructra `SimConfig` i la distribució apropiada per a cada paràmetre, com es mostra a l'exemple a continuació: 
+
+#figure(
+```json
+{
+  "iterations": 10000000,
+  "seed": 42,
+  "sim_config": {
+    "horizon": 300.0,
+    "system_capacity": 0,
+    "passenger_interarrival": { 
+        "exponential": 0.30
+    },
+    "bus_interarrival": { 
+        "hypo": [0.333333, 0.142857]
+    },
+    "bus_capacity": { 
+        "exp_trunc": { "lambda": 0.10, "max": 30.0 }
+    },
+    "boarding_time": { 
+        "uniform": {"min": 2.0, "max": 8.0}
+    }
+  }
+}
+```,
+caption: [Paràmetres d'entrada de la nostra instància. ]
+) <input-json>
+
+La clau `sim_config` ha de contenir els mateixos noms que es mostren a la seva definició @simconfig. Cada un dels paràmetres, ha de tenir la definició del tipus de `Distribution` @distribution i els paràmetres que estiguin sota el tipus de la distribució. Totes les magnituds es mosten en minuts, excepte el `boading_time` que és en segons, tal com diu es demana a l'entrega.
+
+Adicionalment, es pot escollir el nombre de iteracions que es vol que es faci el programa i quina llavor utilitzar per garantir la reproducibilitat dels resultats. En cas de no proveir-se cap llavor (`seed = null`) el programa n'agafarà una d'aleatòria. Si el nombre a `iterations` és exactament 1, es generaran els fitxers de la traça i totes les dades dels usuaris.
+
+Per últim, `system_capacity = 0` farà que el programa carregui `std.math.maxInt(u64)` al programa, és a dir, que és infinit.
+
+*Fitxers Traça i Usertimes.csv*
+
+Escriure a fitxer dins de un bucle genera una interrupció del programa a nivell de SO per a escriure els continguts nous. Aquesta és una mala pràctica per a oferir un bon rendiment, així que explicarem com hem implementat l'escriptura a fitxer i explicant una solució vàlida però potencialment perillosa.
+
+La primera solució seria crear una llista amb tots els usuaris i mantenir-ne un punter al primer usuari de la cua. Quan arribés un autobús a la marquesina, aniriem movent el punter a mesura que els usuaris anessin pujant i escrivint-hi en quin moment han pujat a l'autobús, i en quin moment han servir.
+
+Tot i donar resultats correctes, l'aproximació de l'ArrayList té dos problemes fonamentals quan l'horitzó és arbitrariament llarg:
+1. Out-of-memory error: si algun usuari volgués fer correr la simulació per a un horitzó suficientment llarg, podriem quedar-nos sense memòria dinàmica per a el programa. A mesura que la llista creix, aquesta ocupa més memòria amb dades que, esencialment ja han estat processades. Tot i que que succeeixi és un cas improbable, és millor tenir la seguretat que no pot passar si es dona el cas.
+2. Rendiment: A mesura que l'arraylist creix, el sistema operatiu necessita no només reservar més memòria per a la llista, sinó trobar-ne espais contigus per a copiar tota l'estructura i els nous llocs. Això pot perjudicar molt el rendiment de la simulació en horitzons grans.
+
+La solució emprada ha estat la de l'ús d'un buffer a l'stack, com el que es mostra a @buffer-file. El tamany és de 64KB, i dins de la funció de la simulació es passa `uwriter: *Io.Writer`, que és el que la funció utilitzarà per a escriure els usuaris. 
+
+#figure(
+  ```zig
+  var user_buffer: [64 * 1024]u8 = undefined;
+  const user_file = try std.fs.cwd().createFile("usertimes.csv", .{ .read = false });
+  var user_writer = user_file.writer(&user_buffer);
+  const uwriter = &user_writer.interface;
+
+  ```,
+  caption: [Creació d'un fitxer, obertura del mateix i creació d'un punter `Io.Writer`]
+) <buffer-file>
+
+Aleshores, quan un autobús comença a servir els usuaris, s'executa el codi @write-buffer, que en essencia és la mateixa lògica que l'ArrayList, però amb la diferència que la llista no s'allarga, sinó que els usuaris que han estat servits s'escriuen al buffer `user_buffer` com una línia del csv. Un cop tots han estat servits, s'actualitza el "punter" (utilitzem un index per a comoditat) a el primer i es desplacen tots els usuaris que hi ha actualment a la cua tantes posicions com usuaris han pujat al bus.
+
+#figure(
 ```zig
-const config = SimConfig{
-    .horizon = horizon,
-    .passenger_interarrival = Distribution{ .exponential = lambda }, // lambda
-    .bus_interarrival = Distribution{ .exponential = mu }, // mu
-    .bus_capacity = Distribution{ .constant = x }, // X
-    .boarding_time = Distribution{ .constant = 1e-16 }, // negligible 
-    .system_capacity = k, // K
-};
-```
+const passengers_on_bus = realized_bus_capacity - current_bus_capacity;
+const start_index: usize = first_user_in_queue - passengers_on_bus;
 
-Per tant, per l'entrega final només caldrà modificar la estructura `Distribution` i afegir-hi qualsevol distribució que sigui demanada. Més enllà d'aquests detalls, el codi s'assembla molt al pseudocodi entregat a classe, i es pot trobar al fitxer `main.zig` de l'entrega.
+for (start_index..first_user_in_queue) |i| {
+    const user: *User = &bus_stop.items[i];
+    user.*.departure = t_clock;
+    user.*.service_time = (t_clock - user.*.about_to_board.?);
+    user.*.total_time = user.*.queue_time.? + user.*.service_time.?;
+    
+    // update accumulators
+    sum_queue_time += user.*.queue_time.?;
+    sum_service_time += user.*.service_time.?;
+    sum_total_time += user.*.total_time.?;
+    total_served_passengers += 1;
+
+    if (user_writer) |writer| {
+        try user.*.formatCsv(writer);
+    }
+}
+
+if (first_user_in_queue > 0) {
+    bus_stop.replaceRange(gpa, 0, first_user_in_queue, &[_]User{}) catch unreachable;
+    first_user_in_queue = 0;
+}
+
+acc_boarding = 0.0;
+current_bus_capacity = 0;
+realized_bus_capacity = 0;
+```, caption: [Lògica de processament d'usuaris]
+) <write-buffer>
+
+Al tenir-ho tot en un buffer a stack, no necessitem creixement de memòria dinàmica, encara que si el rati d'arribada de passatgers és molt alt i el de serveis molt baix, sí que anirà creixent la memòria ocupada mentres duri la simulació. Adicionalment, si el buffer s'omplís, zig invocaria automàticament el mètode `flush()` que ho escriura a fitxer i escirura el que roman de l'item a mitjes, és a dir, es produiria la interrupció del programa, però només cada 64KB, que és un nombre absolutament suficient.
+
+La traça s'ha implementat d'una manera anàloga.
 
 
 = Resultats
@@ -422,13 +579,7 @@ Finalment, encapsulem el conjunt de paràmetres de la instància del Grup 2 en l
 
 = Ús i Execució del Codi
 
-A l'entrega s'hi poden trobar els binaris per a les tres plataformes i arquitectures principals (MacOS (aarch64), Windows (x86) i GNU-Linux (x86)) per executar el codi. Per tant, per a executar-lo és tan senzill com obrir una terminal, navegar fins a la carpeta on es troba el binari i executar-lo. El programa necessita 6 arguments per terminal, que són els següents en l'ordre ensenyat:
-+ $lambda$: rati d'arribada entre passatges
-+ $mu$: rati d'arribada dels autobusos
-+ $X$: Capacitat de l'autobús.
-+ $K$: Capacitat màxima del sistema.
-+ horizon: duració de la simulació
-+ $B$: nombre de rèpliques de la simulació.
+A l'entrega s'hi poden trobar els binaris per a les tres plataformes i arquitectures principals (MacOS (aarch64), Windows (x86) i GNU-Linux (x86)) per executar el codi. Per tant, per a executar-lo és tan senzill com obrir una terminal, navegar fins a la carpeta on es troba el binari i executar-lo. El programa necessita un argument a la terminal, el camí relatiu des de l'executable al json.
 
 Ara bé, si el lector és desconfiat a executar un binari trobat a internet - fet no només comprensible sinó respectable - aquí donem informació tècnica per tal de compilar el programa.
 
@@ -442,6 +593,26 @@ Per a compilar el programa, col·loquis sobre l'arrel del projecte, que és un h
 En cas d'errors, sempre es pot utilitzar directament `zig run src/main.zig` i també funcionaria, tot i que la compilació serà en mode debug.
 
 Qualsevol problema en la compilació o execució no es dubti a contactar amb els autors.
+
+#pagebreak()
+= MeanHeap struct _versus_ MeanHeap MultiArrayList
+
+Una de les proves que s'han realitzat per a obtenir un bon rendiment ha estat la implementació del heap amb una MultiArrayList. En un llenguatge de programació orientat a objectes, normalment la estructura natural a tenir és una llista d'objectes iguals, que és com està implementat el heap a `structheap.zig`: mantenim una `ArrayList(Events)` i cada element de la llista conté una estructura `Event`. 
+
+#figure(
+  ```zig
+pub const Event = struct {
+    time: f64,
+    type: EventType,
+    id: u64,
+};
+  ```
+)
+Així i tot, només hi ha un element d'`Event` al que se li faci un accés real (`time`), i per tant estem movent a la memòria cau una estructura que consta de 3 elements quan podria ser una d'una.
+
+Al fitxer `multiheap.zig` s'ha reimplementat la mateixa estructura amb una `MulitArrayList`, on el que es fa és en comptes de tenir una llista d'structs, s'implementa com una estructura amb tres llistes, una per a cada argument. Aquesta implementació pot millorar el rendiment ja que només s'ha de moure tota l'estructura només un cop, mentre que les comparacions del camp temps es fan en una llista, que serà més ràpid que movent tota l'estructura i accedint al camp correcte una per una.
+
+Així i tot, no s'han aconseguit millores empíriques amb aquesta nova implementació. Sospitem que la raó és que l'estructura `Event` és massa petita per verure beneficis reals al dividir-la en multiples llistes, així que l'implementació final utiltiza `structheap.zig`.
 
 
 #pagebreak()
