@@ -15,7 +15,7 @@
 )
 
 #set document(
-  title: [Simluació Marquesina Autobus]
+  title: [Simluació Marquesina Autobus - Arnau Pérez, Pau Soler]
 )
 
 //#set math.equation(numbering: "1.")
@@ -27,7 +27,7 @@
   *Simulació del sistema d'espera d'una parada d'autobús mitjançant _Event-Scheduling_* 
 ])
 #align(center, text(16pt)[
-  _Entrega Final_ 
+  _Entrega Final Simulació_ 
 ])
 
 
@@ -67,8 +67,18 @@ El sistema d'espera es tracta d'una parada d'autobús on arriben usuaris que esp
 \
 
 #text(blue)[TODO: \
-  Aprofitem per extendre aquest apartat per definir en detall què és $L$, $L_q$, $W$, $W_s$ i $W_q$.
+  Aprofitem per extendre aquest apartat per definir en detall què és $L$, $L_q$, $W$, $W_s$ i $W_q$. Ho he començat però crec que ens faria falta una miqueta més de rigor (mortis jeje)
 ]
+
+
+Mesurarem diverses quantitats del sistema:
+- Nombre de clients mitjà al sistema $L$.
+- Nombre de clients mitjà a la cua $L_q$.
+
+I diversos temps:
+- $W$ serà el temps total mitjà que un usuari ha estat al sistema.
+- $W_q$ serà el temps d'espera mitjà d'un usuari a la cua. Concretament, definirem això des del temps d'arribada de l'usuari $t_(a_i)$ i el temps de pujada a l'autobús $t_(b_i)$.
+- $W_s$ serà el temps d'esepra mitjà d'un usuari a ser servit. Definirem aquesta magnitud com el temps d'arribada de l'usuari a la cua $t_(a_i)$ i quan l'usuari ja ha pujat a l'autobús $t_(s_i) = t_(b_i) + b$
 
 == Modelització
 
@@ -142,13 +152,14 @@ Per tant, aquesta cadena de transicions immediates provoca que els $c$ serveis i
 - Si $0 < n < K$, aleshores hi ha un determinat nombre d'usuaris esperant a la marquesina. Per tant pot arribar un usuari nou, $n -> n+1$, o bé pot arribar un autobús amb capacitat $c$ que recull immediatament a tants  usuaris com pot i marxa, $n -> max(0, n-c)$.
 - Altrament, si $n = K$, la marquesina no té més capacitat i per tant no admet més usuaris. Només pot passar $K-> max(0, K-c)$ al arribar un autobús amb capacitat $c$.
 
+#text(blue)[ Ull que això està amb mmx1k
 Finalment, observem que l'esquema de transicions definit, juntament amb els temps entre arribades exponencials tan d'usuaris com d'autobusos a la parada, impliquen que la parada d'autobús sota aquestes hipòtesis es comporta com una cua $M$/$M^([X])$/$1$/$K$, és a dir, una cua on:
 
 - $M$: Temps entre arrivades exponencial.
 - $M^([X])$: Temps de servei exponencial amb taxa per _batches_ (lots) de capacitat aleatòria.
 - $1$: Un únic servidor.
 - $K$: Capacitat del sistema (finita). \u{25A1}
-
+]
 \
 #figure(
   image("img/mmx1k.jpg", width: 90%),
@@ -210,7 +221,7 @@ En el cas de l'_Event-Scheduling_ no hem d'accedir a un element qualsevol, sinó
 
 *Descacoblament Distribució-Lògica*
 
-Tornant al cas concret del problema que ens ocupa, el problema té tres tipus d'esdeveniments (Arribada, Servei, Embarcament, però té quatre paràmetres aleatòris: rati d'arribades ($lambda$), rati de serveis ($mu$), capacitat del bus $C$ i temps d'embarcament $Y$, seguint totes una distribució. Hem aconseguit desacoplar completament la implementació i la lògica de l'algorisme mitjançant una unió amb tots els tipus possibles que es vulguin probar. Adicionalment de la Constant, Uniforme i Exponencial, s'han afegit la Exponencial truncada, la Hypo-Exponencial, la Hyper-Exponencial i la K-Erlang. L  hem emprat una estructures generals aqustes quatre magnituds aleatories per qualsevol tipus de distribució, i no haver de tocar la lògica de l'algorisme. És a dir, la lògica i les distribucions dels paràmetres estan completament desacoplades al codi. Això ho hem aconseguit mitjançant l'estructura @distribution.
+Tornant al cas concret del problema que ens ocupa, el problema té tres tipus d'esdeveniments (Arribada, Servei, Embarcament, però té quatre paràmetres aleatòris: rati d'arribades ($lambda$), rati de serveis ($mu$), capacitat del bus $C$ i temps d'embarcament $Y$, seguint totes una distribució. Hem aconseguit desacoplar completament la implementació i la lògica de l'algorisme mitjançant una unió sobre els diferents tipus que es vulguin demanar. Adicionalment de la Constant, Uniforme i Exponencial, s'han afegit la Exponencial truncada, la Hypo-Exponencial, la Hyper-Exponencial i la K-Erlang. S'ha emprat una estructura general que s'instancia com un tipus de distribució concreta, i no haver de programar ni la lògica de la generació de paràmetres aleartòris ni que a dins de l'algorisme hi hagi lògica de selecció segons el tipus de distribució. És a dir, la lògica de l'_Event-Scheduling_ i les distribucions dels paràmetres estan completament desacoplades. Això ho hem aconseguit mitjançant l'estructura @distribution.
 
 #figure(
 ```zig
@@ -239,7 +250,7 @@ pub const Distribution = union(enum) {
 caption: [Definició de la Unió Distribution]
 ) <distribution>
 
-`Distribution` és una unió, és a dir, que quan s'instacii serà un dels tipus definits just sota l'estructura. La funció sample, implementa en cadascun d'aquests casos la generació d'un nombre aleatòri d'una de les distribucions ja dites. `sampling` concretament és el fitxer `rng.zig`, on hem implementat la definició de totes les magnituds. Aleshores, la funció que implementa l'algorisme al fitxer `main.zig` rep d'entrada un `SimConfig`, on totes les magintuds aleatòries son de tipus distribució, tal com es mostra a @simconfig.
+`Distribution` és una unió, és a dir, que quan s'instacii serà un dels tipus definits just sota l'estructura (`constant, exponential, uniform, hypo, hyper, erlang, exp_trunc`). La funció sample, implementa en cadascun d'aquests casos la generació d'un nombre aleatòri d'una de les distribucions ja dites. `sampling` conté totes les implementacions sobre l'RNG, concretametn és el fitxer `rng.zig`. Aleshores, la funció `eventBusSimulation` de `simulation.zig` com a argument un `SimConfig`, on totes les magintuds aleatòries son de tipus distribució, tal com es mostra a @simconfig.
 
 #figure(
 ```zig
@@ -258,7 +269,7 @@ caption: [Definició de l'estructura SimConfig ]
 
 *Entrada de paràmetres*
 
-Comparat amb la preentrega, no és senzill introduïr una Hipoexponencial o una K-Erlang mitjançant la terminal, així que hem implementat un JSON on s'ha d'introduïr l'estructra `SimConfig` i la distribució apropiada per a cada paràmetre, com es mostra a l'exemple a continuació: 
+Comparat amb la preentrega, és molt farragós senzill introduïr una Hipoexponencial o una K-Erlang mitjançant la terminal, així que hem implementat un JSON on s'ha d'introduïr l'estructra `SimConfig` i la distribució apropiada per a cada paràmetre, com es mostra a @input-json: 
 
 #figure(
 ```json
@@ -286,23 +297,23 @@ Comparat amb la preentrega, no és senzill introduïr una Hipoexponencial o una 
 caption: [Paràmetres d'entrada de la nostra instància. ]
 ) <input-json>
 
-La clau `sim_config` ha de contenir els mateixos noms que es mostren a la seva definició @simconfig. Cada un dels paràmetres, ha de tenir la definició del tipus de `Distribution` @distribution i els paràmetres que estiguin sota el tipus de la distribució. Totes les magnituds es mosten en minuts, excepte el `boading_time` que és en segons, tal com diu es demana a l'entrega.
+La clau `sim_config` ha de contenir els mateixos noms que es mostren a la seva definició @simconfig. Cada un dels paràmetres, ha de tenir la definició del tipus de `Distribution` @distribution i els paràmetres que estiguin sota el tipus de la distribució. Totes les magnituds es mosten en minuts, excepte el `boading_time` que és en segons, tal com s'especifica a l'enunciat de l'entrega.
 
-Adicionalment, es pot escollir el nombre de iteracions que es vol que es faci el programa i quina llavor utilitzar per garantir la reproducibilitat dels resultats. En cas de no proveir-se cap llavor (`seed = null`) el programa n'agafarà una d'aleatòria. Si el nombre a `iterations` és exactament 1, es generaran els fitxers de la traça i totes les dades dels usuaris.
+Adicionalment, es pot escollir el nombre de iteracions que es vol que es faci el programa i quina llavor utilitzar, fet tremendament important per garantir la reproducibilitat dels resultats. En cas de no proveir-se cap llavor (`seed = null`) el programa n'agafarà una d'aleatòria. Si el nombre a `iterations` és exactament 1, es generaran els fitxers de la traça i totes les dades dels usuaris.
 
-Per últim, `system_capacity = 0` farà que el programa carregui `std.math.maxInt(u64)` al programa, és a dir, que és infinit.
+Per últim, `system_capacity = 0` farà que el programa carregui `std.math.maxInt(u64)` al programa, és a dir, el sistema tindrà capacitat infinita.
 
 *Fitxers Traça i Usertimes.csv*
 
-Escriure a fitxer dins de un bucle genera una interrupció del programa a nivell de SO per a escriure els continguts nous. Aquesta és una mala pràctica per a oferir un bon rendiment, així que explicarem com hem implementat l'escriptura a fitxer i explicant una solució vàlida però potencialment perillosa.
+Escriure a fitxer dins de un bucle genera una interrupció del programa a nivell de SO per a escriure els continguts nous. Aquesta és una pràctica poc recomanda per obtenir un bon rendiment, així que explicarem com hem implementat l'escriptura a fitxer i explicant una solució vàlida però potencialment perillosa.
 
-La primera solució seria crear una llista amb tots els usuaris i mantenir-ne un punter al primer usuari de la cua. Quan arribés un autobús a la marquesina, aniriem movent el punter a mesura que els usuaris anessin pujant i escrivint-hi en quin moment han pujat a l'autobús, i en quin moment han servir.
+La primera solució seria crear una llista amb tots els usuaris i mantenir-ne un punter al primer usuari de la cua. Quan arribés un autobús a la marquesina, aniriem movent el punter a mesura que els usuaris anessin pujant i escrivint-hi en quin moment han pujat a l'autobús, i calculant les magnituds $W_s, W_q, W$ un cop s'hagin servit. Després, es queden emmagatzemats a dins de la llista.
 
-Tot i donar resultats correctes, l'aproximació de l'ArrayList té dos problemes fonamentals quan l'horitzó és arbitrariament llarg:
-1. Out-of-memory error: si algun usuari volgués fer correr la simulació per a un horitzó suficientment llarg, podriem quedar-nos sense memòria dinàmica per a el programa. A mesura que la llista creix, aquesta ocupa més memòria amb dades que, esencialment ja han estat processades. Tot i que que succeeixi és un cas improbable, és millor tenir la seguretat que no pot passar si es dona el cas.
-2. Rendiment: A mesura que l'arraylist creix, el sistema operatiu necessita no només reservar més memòria per a la llista, sinó trobar-ne espais contigus per a copiar tota l'estructura i els nous llocs. Això pot perjudicar molt el rendiment de la simulació en horitzons grans.
+Tot i aquesta aproximació donar resultats correctes, mantienir una ArrayList a memòria amb usuaris ja servits té dos problemes fonamentals quan l'horitzó és arbitrariament llarg:
+1. Out-of-memory error: si algun usuari volgués executar la simulació per a un horitzó suficientment llarg, podriem quedar-nos sense memòria dinàmica per a el programa. A mesura que la llista creix, aquesta ocupa més memòria amb dades que ja han estat processades. Tot i que un ordinador modern es quedi sense memòria és altament improbable, és millor tenir la seguretat que no pot passar.
+2. Rendiment: A mesura que l'ArrayList creix, el sistema operatiu necessita no només reservar més memòria per a la llista, sinó trobar-ne amb espais contigus per a copiar tota l'estructura amb les noves cel·les buides. Això pot perjudicar molt el rendiment de la simulació en horitzons grans, ja que cada reserva de memòria és una crida a SO que interromp el programa, i cada reorganització de la memòria ho fa més.
 
-La solució emprada ha estat la de l'ús d'un buffer a l'stack, com el que es mostra a @buffer-file. El tamany és de 64KB, i dins de la funció de la simulació es passa `uwriter: *Io.Writer`, que és el que la funció utilitzarà per a escriure els usuaris. 
+La solució implementada ha estat la de l'ús d'un buffer a l'stack, com el que es mostra a @buffer-file. El tamany és d'aquest és 64KB, i dins de la funció de la simulació es passa com a argument el tiputs `uwriter: *Io.Writer`, que és el que la funció utilitzarà per a escriure els usuaris. 
 
 #figure(
   ```zig
@@ -315,7 +326,7 @@ La solució emprada ha estat la de l'ús d'un buffer a l'stack, com el que es mo
   caption: [Creació d'un fitxer, obertura del mateix i creació d'un punter `Io.Writer`]
 ) <buffer-file>
 
-Aleshores, quan un autobús comença a servir els usuaris, s'executa el codi @write-buffer, que en essencia és la mateixa lògica que l'ArrayList, però amb la diferència que la llista no s'allarga, sinó que els usuaris que han estat servits s'escriuen al buffer `user_buffer` com una línia del csv. Un cop tots han estat servits, s'actualitza el "punter" (utilitzem un index per a comoditat) a el primer i es desplacen tots els usuaris que hi ha actualment a la cua tantes posicions com usuaris han pujat al bus.
+Aleshores, quan un autobús comença a servir els usuaris, s'executa el codi @write-buffer. Aquest codi calcula totes les magnituds d'espera per a tots els usuaris que seran servits pel bus (des del primer a la cua fins al capacitat de l'autobús) d'un en un i augmenta el punter per indicar quin és el primer de la llista; és la mateixa lògica que l'aproximació perillosa descrita al principi d'aquesta secció. La diferència rau en que la llista no s'allarga indefinidiament, sinó que un cop un usuari ha estat servit i les magnituds d'espera calculades, s'escriuen al buffer `user_buffer` com una línia del csv resultant. Un cop tots han estat servits, s'actualitza el "punter" (utilitzem un index `first_user_in_queue` per a comoditat) a el primer i es desplacen tots els usuaris que hi ha actualment a la cua tantes posicions com usuaris han pujat desplaçant la memòria de l'arraylist $c$ posicions, el nombre d'usuaris que ja no és a la cua.
 
 #figure(
 ```zig
@@ -350,10 +361,11 @@ realized_bus_capacity = 0;
 ```, caption: [Lògica de processament d'usuaris]
 ) <write-buffer>
 
-Al tenir-ho tot en un buffer a stack, no necessitem creixement de memòria dinàmica, encara que si el rati d'arribada de passatgers és molt alt i el de serveis molt baix, sí que anirà creixent la memòria ocupada mentres duri la simulació. Adicionalment, si el buffer s'omplís, zig invocaria automàticament el mètode `flush()` que ho escriura a fitxer i escirura el que roman de l'item a mitjes, és a dir, es produiria la interrupció del programa, però només cada 64KB, que és un nombre absolutament suficient.
+Aquesta aproximació resol els dos potencials problemes que tenia l'ArrayList infinita: si la simulació convergeix, no es necessitarà reservar mai més memòria, ja que anirem copiant la llista en memòria que el programa ja posseix; si la simulació divergeix, encara necessitarem reservar memòria extra, però no tanta, a més a més que és un problema insalvable. Al guardar-se els usuaris formatats en un buffer a stack, no necessitem creixement de memòria dinàmica. Si el buffer s'omplís, Zig invocaria automàticament un `flush` que escriura a fitxer totes les dades que hi hagués, és a dir, es produiria la interrupció del programa, però només cada 64KB que és un nombre absolutament suficient.
+
+Aleshores, per a calcular la mitjana de les tres magnituds d'espera $W, W_s, W_q$, senzillament utilitzem un accumulador per a cada una, i dividim pel nombre d'usuaris servits al final de la simulació.
 
 La traça s'ha implementat d'una manera anàloga.
-
 
 = Resultats
 
