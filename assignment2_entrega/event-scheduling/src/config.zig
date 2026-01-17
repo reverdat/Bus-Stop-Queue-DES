@@ -27,7 +27,7 @@ pub const Distribution = union(enum) {
             .hypo => |rates| return sampling.rhypo(f64, rates, rng),
             .hyper => |p| return sampling.rhyper(f64, p.probs, p.rates, rng),
             .erlang => |p| return sampling.rerlang(f64, p.k, p.lambda, rng),
-            .exp_trunc => |p| return @max(sampling.rexp(f64, p.lambda, rng), p.max),
+            .exp_trunc => |p| return @min(sampling.rexp(f64, p.lambda, rng), p.max),
         }
     }
 
@@ -40,7 +40,7 @@ pub const Distribution = union(enum) {
     pub fn scaleTime(self: *Distribution, factor: f64) void {
         switch (self.*) {
             .constant => |*val| val.* *= factor,
-            
+
             .uniform => |*u| {
                 u.min *= factor;
                 u.max *= factor;
@@ -56,7 +56,7 @@ pub const Distribution = union(enum) {
             },
             .exp_trunc => |*et| {
                 et.lambda /= factor; // Rate scales inversely
-                et.max *= factor;    // Max limit is a Time unit, so it scales directly
+                et.max *= factor; // Max limit is a Time unit, so it scales directly
             },
         }
     }
@@ -217,7 +217,7 @@ pub const User = struct {
     pub fn formatCsvHeader(writer: *Io.Writer) Io.Writer.Error!void {
         // una miqueta de type reflection jeje
         const user_info = @typeInfo(@This());
-        
+
         inline for (user_info.@"struct".fields) |field| {
             const name = field.name;
             try writer.print("{s},", .{name});
@@ -231,7 +231,7 @@ pub const User = struct {
         self: @This(),
         writer: *Io.Writer,
     ) Io.Writer.Error!void {
-        const user_info = @typeInfo(@This()); 
+        const user_info = @typeInfo(@This());
 
         inline for (user_info.@"struct".fields) |field| {
             const name = field.name;
@@ -242,5 +242,4 @@ pub const User = struct {
         try writer.writeAll("\n");
         return;
     }
-    
 };
