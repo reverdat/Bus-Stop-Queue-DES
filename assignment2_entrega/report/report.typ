@@ -425,7 +425,7 @@ $
 
 
 $
-  tau_(C, i) equiv nu  ~ "Unif"(a,b) quad [text("min")\/text("usuari")].
+  tau_(C, i) equiv nu  ~ "Unif"(a,b) quad [text("s")\/text("usuari")].
 $
 
 - El temps entre les arribades d'autobusos a la parada segueix una distribució hipoexponencial de dues etapes amb temps mitjans $1\/mu_1 := 3$ i $1\/mu_2 := 7$:
@@ -437,7 +437,7 @@ $
 - El temps entre les arribades d'usuaris a la marquesina segueix una distribució exponencial de paràmetre $lambda_j = rho_j dot mu dot bb(E)(X) quad [text("usuari")\/text("min")]$, $j = 1,dots,4$, on $mu = 1\/ bb(E)(tau_B)$:
 
 $
-  tau_(A, i+1) - tau_(A, i) ~ "Exp"(lambda_j) quad j = 1,dots,4 quad [text("min")].
+  tau_(A, i+1) - tau_(A, i) ~ "Exp"(lambda_j) quad j = 1,dots,4 quad [text("usuari")\/text("min")].
 $
 
 
