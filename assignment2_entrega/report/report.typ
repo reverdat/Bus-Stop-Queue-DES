@@ -15,7 +15,7 @@
 )
 
 #set document(
-  title: [Simluació Marquesina Autobus - Arnau Pérez, Pau Soler]
+  title: [Simulaació Marquesina Autobús - Arnau Pérez, Pau Soler]
 )
 
 //#set math.equation(numbering: "1.")
@@ -412,32 +412,32 @@ L'entrega final incrementa la complexitat del model de simulació mitjançant di
 - La capacitat d'un autobús a la seva arribada $X$ segueix una distribució exponencial truncada d'esperança $K^(prime)(e^2-3)\/(2e^2-2) ~ K^prime\/3$, amb $K^(prime) := 30$:
 
 $
-  X ~ f_(gamma)(c) = 2 / (K^(prime)(e^2 - 1)) op("exp") lr((2(1 - c / K^prime))), quad 0 <= c <= K^prime.
+  X ~ f_(gamma)(c) = 2 / (K^(prime)(e^2 - 1)) op("exp") lr((2(1 - c / K^prime))), quad 0 <= c <= K^prime  quad [text("usuari")\/text("autobus")].
 $
 
 - La capacitat de la marquesina $K$ és il·limitada:
 
 $
-    K = + infinity. 
+    K = + infinity  quad [text("usuari")]. 
 $
 
 - El temps de pujada d'un usuari segueix una distribució uniforme entre $a := 2$ i $b := 8$:
 
 
 $
-  tau_(C, i) equiv nu ~ "Unif"(a,b).
+  tau_(C, i) equiv nu  ~ "Unif"(a,b) quad [text("min")\/text("usuari")].
 $
 
 - El temps entre les arribades d'autobusos a la parada segueix una distribució hipoexponencial de dues etapes amb temps mitjans $1\/mu_1 := 3$ i $1\/mu_2 := 7$:
 
 $
-  tau_(B, i+1) - tau_(B, i) ~ "Hypo"(mu_1, mu_2).
+  tau_(B, i+1) - tau_(B, i) ~ "Hypo"(mu_1, mu_2) quad [text("min")\/text("autobus")].
 $
 
-- El temps entre les arribades d'usuaris a la marquesina segueix una distribució exponencial de paràmetre $lambda_j = rho_j dot mu dot bb(E)(X)$, $j = 1,dots,4$, on $mu = 1\/ bb(E)(tau_B)$:
+- El temps entre les arribades d'usuaris a la marquesina segueix una distribució exponencial de paràmetre $lambda_j = rho_j dot mu dot bb(E)(X) quad [text("usuari")\/text("min")]$, $j = 1,dots,4$, on $mu = 1\/ bb(E)(tau_B)$:
 
 $
-  tau_(A, i+1) - tau_(A, i) ~ "Exp"(lambda_j) quad j = 1,dots,4.
+  tau_(A, i+1) - tau_(A, i) ~ "Exp"(lambda_j) quad j = 1,dots,4 quad [text("min")].
 $
 
 
@@ -450,22 +450,22 @@ Observem que $lambda_j$ varia per $j = 1,dots,4$ mitjançant els següents valor
 ))
 \
 
-A priori podem afirmar que el factor de càrrega $rho_j$ congestiona més el sistema d'espera a mesura que aquest incrementa. El resultat és un sistema d'espera inestable per a tot $j = 1,dots,4$. En efecte, podem calcular la freqüència de servei (d'usuaris) $mu^prime$ com
+A priori podem afirmar que el factor de càrrega $rho_j$ congestiona més el sistema d'espera a mesura que aquest incrementa. El resultat, no obstant, és un sistema d'espera estable per a tot $j = 1,dots,4$. En efecte, podem calcular la freqüència de servei (d'usuaris) $mu^prime$ com
 $
-  mu^prime = mu dot bb(E)(X) dot bb(E)(tau_C)^(-1)  
+  mu^prime = mu dot bb(E)(X) dot bb(E)(tau_C)^(-1) dot 60 quad [text("usuari")\/text("min")] 
 $
-que té unitats de $"usuaris"\/"u. de temps"$. Per tant,
+Per tant,
 $
-  mu^prime =mu dot bb(E)(X) dot bb(E)(tau_C)^(-1) = 0.1 dot 10 dot 5^(-1) = 0.2.
+  mu^prime =mu dot bb(E)(X) dot bb(E)(tau_C)^(-1) dot 60 = 0.1 dot 10 dot 5^(-1) dot 60 = 12 quad [text("usuari")\/text("min")] .
 $
-En el millors dels casos tenim
+En el pitjor dels casos tenim un rati d'arribades de 
 $
-  lambda_1 = rho_1 dot mu dot bb(E)(X) = 0.3 dot 0.1 dot 10 =  0.3.
+  lambda_4 = rho_4 dot mu dot bb(E)(X) = 0.9 dot 0.1 dot 10 =  0.9 quad [text("usuaris")\/text("min")].
 $
 
 Per tant, 
 $
-  rho_1^prime = lambda_1 \/ mu^prime = 0.3\/0.2 = 1.5 > 1.
+  rho_4^prime = lambda_4 \/ mu^prime = 0.9\/12 = 0.075 < 1.
 $
 
 Observem que això es veu a més a més afectat pel fet que la marquesina no té capacitat finita, de forma que la cua pot crèixer arbitràriament. Per tant, en un horitzó temporal llunyà no podem garantir que el nostre sistema d'espera verifiqui la Llei de Little.
