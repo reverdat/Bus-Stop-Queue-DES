@@ -63,7 +63,7 @@ Aquesta secció a més a més manté la base teòrica presentada com a preentreg
 El sistema d'espera es tracta d'una parada d'autobús on arriben usuaris que esperen a que arribi un autobús per tal de pujar-hi i marxar. Es poden definir dues components principals: la marquesina (arribades) i l'autobús (serveis).
 \
 1. *Marquesina*: Es tracta d'una plataforma de capacitat $K$ on els usuaris arriben de individualment amb temps aleatori $tau_A$ i esperen a ser servits per un autobús. S'assumeix que els usuaris són respectuossos i s'ordenen en una cua per ordre d'arribada per tal de pujar a l'autobús seguint la doctrina FIFO (First-In First-Out). Si en un determinat moment la cua conté $K$ usuaris i arriba un de nou, aquest no entra al sistema, sinó que és descartat.
-2. *Autobús*: És l'únic servidor del sistema d'espera. Arriba en un temps aleatori a la parada $tau_B$ i amb una capacitat $X$. Permet començar l'embarcament dels usuaris esperant a la marquesina, els quals triguen a pujar a l'autobús un temps aleatori $tau_C$. El bus marxa de la parada només quan exhaureix la seva capacitat o bé quan no queden usuaris esperant a la marquesina.
+2. *Autobús*: És l'únic servidor del sistema d'espera. Arriba en un temps aleatori a la parada $tau_B$ i amb una capacitat $X$. Permet començar l'embarcament dels usuaris esperant a la marquesina, els quals triguen a pujar a l'autobús un temps aleatori $tau_C$. El bus marxa de la parada només quan exhaureix la seva capacitat o bé quan no queden usuaris esperant a la marquesina. Si arriba un autobús quan un encara està servint, es reseteja la font, no s'acumula la capacitat. Si un autobús arriba a la parada i no hi ha clients a atendre no se serveix a ningú, és a dir, que l'autobús marxa de la parada.
 \
 
 #text(blue)[TODO: \
@@ -99,7 +99,7 @@ I diversos temps:
   - 1: un servidor
   - Vac: cada quan "retorna" o n'arriba un de nou vaja de busos. Això és la Hypo-Exponencial
   
-  les fonts d'això són... complicades xd. Era tot tan dispers que he fet un deep research amb el gemini, perque els llibres que hi havia sobre el tema eren massa teòrics i no m'explicaven com classifica-les
+  les fonts d'això són... complicades xd. Era tot tan dispers que he fet un deep research amb el gemini, perque els llibres que hi havia sobre el tema eren massa teòrics i no m'explicaven com classifica-les 
   
   Si et poses perepunyetes, crec que la M pot posar-se com $"GI"$, que és general interarrival si en algun moment no és exponencial, però no és el nostre cas (en el grup dos)
 
@@ -110,21 +110,29 @@ I diversos temps:
 
 #text(red)[
 
-  El sistema d'espera descrit anteriorment es pot identficar de manera general amb $"GI"\/G^((Y))\/1\/K\/"Vac" "amb vacances múltiples"$ on cada una de les magnituds representa el següent:
-  - GI: el temps entre dues arribades segueix una distribució en genera.
-  - $G^((Y))$: el servei és en _bulk_, concretament depen d'una variable aleatòria $Y$.
-  - $1$: Només un servidor, els busos arriben d'un en un.
-  - $K$: capacitat màxima d'usuaris al sistema.
-  - $"Vac"$: com es comporta el servidor respecte els usuaris. Hi ha dos tipus de vacances: múltiples si quan no hi ha ningú a la cua i el servidor arriba, aquest s'espera a els següents usuaris, o simple, el servidor s'espera a servir usuaris encara que quan arribi no n'hi hagi cap.
+  El sistema d'espera descrit anteriorment es pot identficar de manera general amb una notació de Kendall @kendall-notation ampliada (com generalitzar les cues en bulk @chaudhry-templeton-41 @chaudhry-templeton-42) (concepte vacances simples i múltiples @fiems-queues-survey):
 
-  Més concretament, el sistema en el que avaluarem la simulació (seguint el proporcionat a classe) és $M\/G^((Y))\/1\/K\/"Hypo" "amb vacances multiples"$, on 
-  - El temps d'arribada entre dos usuaris consecutius a la marquesina és $tau_(A, i+1) - tau_(A, i)$, és a dir $M ~ "Exp"(lambda)$
-  - La capacitat dels autobusos és una exponencial truncada $Y ~ "TuncExp"(40) = min{40, "Exp"(lambda)}$
-  - Només té un servidor simulaniament
-  - La capacitat del sistema és infinita
-  - El temps d'arribada entre bus i bus segueix una Hypo-Exponencial, definida com
+  $ "GI"\/G^((Y))\/1\/K\/"Vac" "amb vacances múltiples" $  
 
-  TODO DEFINICIÓ de la hypoexponencial en latex
+  On cada una de les magnituds representa el següent:
+  - $"GI"$ (_General Independent_): el temps entre dues arribades segueix una distribució en genera.
+  - $G^((Y))$ (_General Bulk Service_): el servei és en _bulk_ (per lots), on concretament la mida depend d'una variable aleatòria $Y$. El superíndex denota la capacitat estocàstica en cues de transport.
+  - $1$: Només un servidor (la marquesina), els busos arriben d'un en un.
+  - $K$: capacitat màxima d'usuaris al sistema, que pot ser infinita.
+  - $"Vac"$ (Vacances): com es comporta el servidor quan no hi ha usuaris presents. Hi ha dos tipus de vacances: (1) múltiples si quan no hi ha ningú a la cua i el servidor arriba, aquest s'espera a els següents usuaris; (2) simple, el servidor s'espera a servir usuaris encara que quan arribi no n'hi hagi cap.
+
+  Més concretament, la instància que ens ha estat proporcionada per a avaluar es pot classificar com una $M\/G^((Y))\/1\/K\/"Hypo" "amb vacances multiples"$ definida pels paràmetres següents:
+  + Temps d'arribada entre usuaris ($M$): El temps entre arribades consequtives a la marquesina és $tau_A = t_(A, i+1) - t_(A, i)$. Segueix una exponencial $tau_A ~ "Exp"(lambda)$
+  + Capacitat del bus (Y): La capacitat dels autobusos és una exponencial truncada amb màxim $C_("max") = 40$. Si $X$ és la exponencial base, definim $Y$ com
+  $ Y ~ "TuncExp"(40) = min{40, X} "on" X ~ "Exp"(eta) $
+  - Servidor: Només té un servidor.
+  - Capacitat del sistema: no hi ha capacitat màxima.
+  - Arribada de busos: El temps d'arribada entre bus i bus segueix una Hypoexponencial de dues fases $X ~ "Hypo"(3,7)$.
+
+  La Hypoexponencial es defineix com la suma de variables aleatòries amb paràmetres diferents.
+
+  $ T_("bus") ~ "Hypo"(lambda_1, ..., lambda_n) = sum_(i=1)^n X_i "on" X_i ~ "Exp"(lambda_i)$
+
 ]
 
 El sistema d'espera descrit anteriorment es pot identificar amb una cua amb working vacations, amb la següent notació $$ mitjançant una serie de hipòtesis que es defineixen a continuació. A continuació es proporciona una simple demostració d'aquesta afirmació que no busca ser rigorosa:

@@ -1,4 +1,41 @@
-fiems-2025-queues-survey:
+kendall-notation:
+  type: entry
+  title: "Kendall's notation"
+  author: "Wikipedia contributors"
+  date: 2025-07-12
+  url: "https://en.wikipedia.org/wiki/Kendall%27s_notation"
+  date-accessed: 2026-01-17
+  parent:
+    title: "Wikipedia"
+    type: web
+
+chaudhry-templeton-41:
+  type: chapter
+  title: "The System M/G^B/1"
+  author: ["Chaudhry, M. L.", "Templeton, James G. C."]
+  date: 1983
+  chapter: "4.1"
+  date-accessed: 2026-01-17
+  parent:
+    type: book
+    title: "A First Course in Bulk Queues"
+    publisher: "John Wiley & Sons"
+    location: "New York"
+
+chaudhry-templeton-42:
+  type: chapter
+  title: "The System M/G^{a,b}/1"
+  author: ["Chaudhry, M. L.", "Templeton, James G. C."]
+  date: 1983
+  chapter: "4.2"
+  date-accessed: 2026-01-17
+  parent:
+    type: book
+    title: "A First Course in Bulk Queues"
+    publisher: "John Wiley & Sons"
+    location: "New York"
+
+fiems-queues-survey:
   type: article
   title: "Queues with Working Vacations: A Survey"
   author: "Fiems, Dieter"
