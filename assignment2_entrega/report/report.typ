@@ -64,21 +64,14 @@ El sistema d'espera es tracta d'una parada d'autobús on arriben usuaris que esp
 \
 1. *Marquesina*: Es tracta d'una plataforma de capacitat $K$ on els usuaris arriben de individualment amb temps aleatori $tau_A$ i esperen a ser servits per un autobús. S'assumeix que els usuaris són respectuossos i s'ordenen en una cua per ordre d'arribada per tal de pujar a l'autobús seguint la doctrina FIFO (First-In First-Out). Si en un determinat moment la cua conté $K$ usuaris i arriba un de nou, aquest no entra al sistema, sinó que és descartat.
 2. *Autobús*: És l'únic servidor del sistema d'espera. Arriba en un temps aleatori a la parada $tau_B$ i amb una capacitat $X$. Permet començar l'embarcament dels usuaris esperant a la marquesina, els quals triguen a pujar a l'autobús un temps aleatori $tau_C$. El bus marxa de la parada només quan exhaureix la seva capacitat o bé quan no queden usuaris esperant a la marquesina. Si arriba un autobús quan un encara està servint, es reseteja la font, no s'acumula la capacitat. Si un autobús arriba a la parada i no hi ha clients a atendre no se serveix a ningú, és a dir, que l'autobús marxa de la parada.
-\
 
-#text(blue)[TODO: \
-  Aprofitem per extendre aquest apartat per definir en detall què és $L$, $L_q$, $W$, $W_s$ i $W_q$. Ho he començat però crec que ens faria falta una miqueta més de rigor (mortis jeje)
-]
+Com a sistema d'espera ens interessa estudiar una serie de magnituts que resulten del desenvolupament de la trajectòria de la simulació/realització, i que caracteritzen el seu comportament:
 
-
-Mesurarem diverses quantitats del sistema:
-- Nombre de clients mitjà al sistema $L$.
-- Nombre de clients mitjà a la cua $L_q$.
-
-I diversos temps:
-- $W$ serà el temps total mitjà que un usuari ha estat al sistema.
-- $W_q$ serà el temps d'espera mitjà d'un usuari a la cua. Concretament, definirem això des del temps d'arribada de l'usuari $t_(a_i)$ i el temps de pujada a l'autobús $t_(b_i)$.
-- $W_s$ serà el temps d'esepra mitjà d'un usuari a ser servit. Definirem aquesta magnitud com el temps d'arribada de l'usuari a la cua $t_(a_i)$ i quan l'usuari ja ha pujat a l'autobús $t_(s_i) = t_(b_i) + b$
+- *$L$*: Nombre mitjà de clients al sistema. Aquest magnitud mesura el nombre d'usuaris que hi han simultàniament en la totalitat del sistema, és a dir, tan esperant a la cua com a embarcats a l'autobús esperant a marxar. 
+- *$L_q$*: Nombre mitjà de clients a la cua. Es mesura la quantitat d'usuaris esperant exclusivament a la marquesina.
+- *$W$*: Temps total mitjà d'un client al sistema. Quantifica el temps del recorregut de l'usuari des de la seva arribada a la marquesina fins que marxa l'autobús al que ha aconseguit embarcar.
+- *$W_q$*: Temps mitjà de permanència d'un client a la cua. Aquest temps comprèn des de l'arribada de l'usuari a la marquesina fins a l'instant immediatament abans a que comenci el seu embarcament.
+- *$W_s$*: Temps mitjà de servei a un client. Comprèn des del moment en que l'usuari comença l'embarcament fins que marxa el seu autobús. Observem que això conté el propi temps d'embarcament però també el dels possibles usuaris següents a la cua.
 
 == Modelització
 
@@ -160,14 +153,13 @@ Per tant, aquesta cadena de transicions immediates provoca que els $c$ serveis i
 - Si $0 < n < K$, aleshores hi ha un determinat nombre d'usuaris esperant a la marquesina. Per tant pot arribar un usuari nou, $n -> n+1$, o bé pot arribar un autobús amb capacitat $c$ que recull immediatament a tants  usuaris com pot i marxa, $n -> max(0, n-c)$.
 - Altrament, si $n = K$, la marquesina no té més capacitat i per tant no admet més usuaris. Només pot passar $K-> max(0, K-c)$ al arribar un autobús amb capacitat $c$.
 
-#text(blue)[ Ull que això està amb mmx1k
 Finalment, observem que l'esquema de transicions definit, juntament amb els temps entre arribades exponencials tan d'usuaris com d'autobusos a la parada, impliquen que la parada d'autobús sota aquestes hipòtesis es comporta com una cua $M$/$M^([X])$/$1$/$K$, és a dir, una cua on:
 
 - $M$: Temps entre arrivades exponencial.
 - $M^([X])$: Temps de servei exponencial amb taxa per _batches_ (lots) de capacitat aleatòria.
 - $1$: Un únic servidor.
 - $K$: Capacitat del sistema (finita). \u{25A1}
-]
+
 \
 #figure(
   image("img/mmx1k.jpg", width: 90%),
@@ -188,7 +180,7 @@ Una representació general del diagrama de transicions de la parada d'autobús �
 ]
 El fet que el comportament teòric del sistema d'espera de la parada d'autobús sigui equivalent a una cua $M$/$M^([X])$/$1$/$K$ sota aquestes condicions ens permet resoldre les equacions del seu estat estacionari de la cadena de Màrkov asssociada.
 
-Per calcular les probabilitats d'estat estacionari $P_n$, plantegem les equacions d'equilibri global de la cadena de Markov contínua. L'estructura de transicions dona lloc al sistema lineal $Q^T P = 0$ juntament amb la normalització $sum_(n=0)^K P_n = 1$ i $P_n >= 0$. D'acord amb l'enunciat de la preentrega, a partir d'ara fixem la capacitat de l'autobús com a una v.a. constant $X equiv c = 3$ i la marquesina $K = 9$. Formalment, hem de resoldre el sistema d'equacions:
+Per calcular les probabilitats d'estat estacionari $P_n$, plantegem les equacions d'equilibri global de la cadena de Markov contínua. L'estructura de transicions dona lloc al sistema lineal $Q^T P = 0$ juntament amb la normalització $sum_(n=0)^K P_n = 1$ i $P_n >= 0$. Fixem la capacitat de l'autobús com a una v.a. constant $X equiv c = 3$ i la marquesina $K = 9$. Formalment, hem de resoldre el sistema d'equacions:
 
 
 \
@@ -229,7 +221,7 @@ En el cas de l'_Event-Scheduling_ no hem d'accedir a un element qualsevol, sinó
 
 *Descacoblament Distribució-Lògica*
 
-Tornant al cas concret del problema que ens ocupa, el problema té tres tipus d'esdeveniments (Arribada, Servei, Embarcament, però té quatre paràmetres aleatòris: rati d'arribades ($lambda$), rati de serveis ($mu$), capacitat del bus $C$ i temps d'embarcament $Y$, seguint totes una distribució. Hem aconseguit desacoplar completament la implementació i la lògica de l'algorisme mitjançant una unió sobre els diferents tipus que es vulguin demanar. Adicionalment de la Constant, Uniforme i Exponencial, s'han afegit la Exponencial truncada, la Hypo-Exponencial, la Hyper-Exponencial i la K-Erlang. S'ha emprat una estructura general que s'instancia com un tipus de distribució concreta, i no haver de programar ni la lògica de la generació de paràmetres aleartòris ni que a dins de l'algorisme hi hagi lògica de selecció segons el tipus de distribució. És a dir, la lògica de l'_Event-Scheduling_ i les distribucions dels paràmetres estan completament desacoplades. Això ho hem aconseguit mitjançant l'estructura @distribution.
+Tornant al cas concret del problema que ens ocupa, el problema té tres tipus d'esdeveniments (Arribada, Servei, Embarcament, però té quatre paràmetres aleatòris: rati d'arribades ($lambda$), rati de serveis ($mu$), capacitat del bus $C$ i temps d'embarcament $Y$, seguint totes una distribució. Hem aconseguit desacoplar completament la implementació i la lògica de l'algorisme mitjançant una unió sobre els diferents tipus que es vulguin demanar. Adicionalment de la Constant, Uniforme i Exponencial, s'han afegit la Exponencial truncada, la Hypo-Exponencial, la Hyper-Exponencial i la $k$-Erlang. S'ha emprat una estructura general que s'instancia com un tipus de distribució concreta, i no haver de programar ni la lògica de la generació de paràmetres aleartòris ni que a dins de l'algorisme hi hagi lògica de selecció segons el tipus de distribució. És a dir, la lògica de l'_Event-Scheduling_ i les distribucions dels paràmetres estan completament desacoplades. Això ho hem aconseguit mitjançant l'estructura @distribution.
 
 #figure(
 ```zig
@@ -250,7 +242,7 @@ pub const Distribution = union(enum) {
             .hypo => |rates| return sampling.rhypo(f64, rates, rng),
             .hyper => |p| return sampling.rhyper(f64, p.probs, p.rates, rng),
             .erlang => |p| return sampling.rerlang(f64, p.k, p.lambda, rng),
-            .exp_trunc => |p| return @max(sampling.rexp(f64, p.lambda, rng), p.max),
+            .exp_trunc => |p| return @min(sampling.rexp(f64, p.lambda, rng), p.max),
         }
     }
 }
@@ -277,7 +269,7 @@ caption: [Definició de l'estructura SimConfig ]
 
 *Entrada de paràmetres*
 
-Comparat amb la preentrega, és molt farragós senzill introduïr una Hipoexponencial o una K-Erlang mitjançant la terminal, així que hem implementat un JSON on s'ha d'introduïr l'estructra `SimConfig` i la distribució apropiada per a cada paràmetre, com es mostra a @input-json: 
+Comparat amb la preentrega, és molt farragós introduïr una Hipoexponencial o una $k$-Erlang mitjançant la terminal, així que hem implementat un JSON on s'ha d'introduïr l'estructra `SimConfig` i la distribució apropiada per a cada paràmetre, com es mostra a @input-json: 
 
 #figure(
 ```json
@@ -302,7 +294,7 @@ Comparat amb la preentrega, és molt farragós senzill introduïr una Hipoexpone
   }
 }
 ```,
-caption: [Paràmetres d'entrada de la nostra instància. ]
+caption: [Exemple de paràmetres d'entrada de la nostra instància. ]
 ) <input-json>
 
 La clau `sim_config` ha de contenir els mateixos noms que es mostren a la seva definició @simconfig. Cada un dels paràmetres, ha de tenir la definició del tipus de `Distribution` @distribution i els paràmetres que estiguin sota el tipus de la distribució. Totes les magnituds es mosten en minuts, excepte el `boading_time` que és en segons, tal com s'especifica a l'enunciat de l'entrega.
@@ -445,7 +437,7 @@ $
 - El temps entre les arribades d'usuaris a la marquesina segueix una distribució exponencial de paràmetre $lambda_j = rho_j dot mu dot bb(E)(X) quad [text("usuari")\/text("min")]$, $j = 1,dots,4$, on $mu = 1\/ bb(E)(tau_B)$:
 
 $
-  tau_(A, i+1) - tau_(A, i) ~ "Exp"(lambda_j) quad j = 1,dots,4 quad [text("usuari")\/text("min")].
+  tau_(A, i+1) - tau_(A, i) ~ "Exp"(lambda_j) quad j = 1,dots,4 quad [text("min")\/text("usuari")].
 $
 
 
@@ -458,73 +450,44 @@ Observem que $lambda_j$ varia per $j = 1,dots,4$ mitjançant els següents valor
 ))
 \
 
-A priori podem afirmar que el factor de càrrega $rho_j$ congestiona més el sistema d'espera a mesura que aquest incrementa. El resultat, no obstant, és un sistema d'espera estable per a tot $j = 1,dots,4$. En efecte, podem calcular la freqüència de servei (d'usuaris) $mu^prime$ com
-$
-  mu^prime = mu dot bb(E)(X) dot bb(E)(tau_C)^(-1) dot 60 quad [text("usuari")\/text("min")] 
-$
-Per tant,
-$
-  mu^prime =mu dot bb(E)(X) dot bb(E)(tau_C)^(-1) dot 60 = 0.1 dot 10 dot 5^(-1) dot 60 = 12 quad [text("usuari")\/text("min")] .
-$
-En el pitjor dels casos tenim un rati d'arribades de 
-$
-  lambda_4 = rho_4 dot mu dot bb(E)(X) = 0.9 dot 0.1 dot 10 =  0.9 quad [text("usuaris")\/text("min")].
-$
-
-Per tant, 
-$
-  rho_4^prime = lambda_4 \/ mu^prime = 0.9\/12 = 0.075 < 1.
-$
-
-Observem que això es veu a més a més afectat pel fet que la marquesina no té capacitat finita, de forma que la cua pot crèixer arbitràriament. Per tant, en un horitzó temporal llunyà no podem garantir que el nostre sistema d'espera verifiqui la Llei de Little.
-\
-
-Abans de presentar els resultats de la instància original la modificarem per tal de garantir $rho^prime < 1$ i verificar si es compleix la Llei de Little.
-
-== Validació de la Llei de Little
-
-Es suficient reduïr el factor de càrrega $rho := 0.10$: observem que en aquest cas tenim
-$
-  lambda = rho dot mu dot bb(E)(X) = 0.12 dot 0.1 dot 10 =  0.12,
-$
-i aleshores
-$
-  rho^prime = lambda \/ mu^prime = 0.12\/0.2 = 0.6 < 1.
-$
-El fitxer de configuració de paràmetres en aquest cas és `input_params/little.json`. Fixem en aquest cas un horitzó temporal llunyà de $T = 1,000,000$ i reproduïm $B = 10,000$ simulacions.
+A priori podem afirmar que el factor de càrrega $rho_j$ congestiona més el sistema d'espera a mesura que aquest incrementa. El resultat, no obstant, és un sistema d'espera estable per a tot $j = 1,dots,4$. En efecte, busquem calcular la freqüència de servei de passatgers, el qual està comprès per dos factors:
 
 \
+  1. Per un costat tenim la freqüència de servei d'usuaris definida per la capacitat dels autobusos en la seva arribada a la parada:
+  $
+    mu_(text("bus")) = mu dot bb(E)(X) = 0.1 dot 10 = 1 quad [text("usuari")\/text("min")].
+  $
+  Observem que aquesta seria la freqüència màxima de servei si el temps d'embarcament fos nul.
+  2. D'altra banda, un cop un autobús és a la parada, la freqüència de pujada física dels usuaris és:
+  $
+    mu_(text("pujada")) = (bb(E)(tau_C)\/60)^(-1) = (5\/60)^
+    (-1) = 12 quad [text("usuari")\/text("min")].
+  $
+ La freqüència efectiva de servei del sistema queda definida pel factor que constitueix el vertader _bottleneck_, és a dir, el mínim entre els dos ratis:
 
-#figure(
-  caption: [Estimació de magnituds del S.E. (Grup 2, $lambda = 0.12$)],
-  table(
-    columns: (auto, auto),
-    inset: 10pt,
-    align: (col, row) => (if col == 0 { left } else { center }),
-    stroke: none,
-    table.header(
-      [*Magnitud*], [*Estimació (IC 95%)*],
-      table.hline(stroke: 1pt),
-    ),
-    $hat(L)$,   $3.0810 plus.minus 5.82 dot 10^(-4)$,
-    $hat(L_q)$, $1.5472 plus.minus 1.85 dot 10^(-4)$,
-    $hat(W_q)$, $10.4726 plus.minus 1.36 dot 10^(-3)$,
-    $hat(W_s)$, $20.3381 plus.minus 3.62 dot 10^(-3)$,
-    $hat(W)$,   $30.8107 plus.minus 4.59 dot 10^(-3)$,
-    table.hline(stroke: 1pt),
-  ),
-  supplement: "Taula"
-)
+  $
+    mu^(prime) = min( mu_(text("bus")), mu_(text("pujada"))) = min(1, 12) = 1 quad [text("usuari")\/text("min")].
+  $
+
+En el pitjor dels casos tenim un rati d'arribades d'usuaris a la parada de 
+$
+  lambda_4 = rho_4 dot mu dot bb(E)(X) = 0.9 dot 0.1 dot 10 =  0.9 quad [text("usuari")\/text("min")].
+$
+
+Per tant, confirmem l'estabilitat del sistema:
+$
+  rho_4^prime = lambda_4 \/ mu^prime = 0.9\/1 = 0.9 < 1.
+$
+
+Cal destacar però que la marquesina no té capacitat finita, de forma que la cua pot crèixer arbitràriament. No obstant, aquesta garantia d'estabilitat implica que la Llei de Little es verifica en un horitzó temporal llunyà.
 \
-
-Observem que aquesta configuració ens proporciona intervals de confiança molt estrets, especialment per a $hat(L)$ i $hat(W)$, i on tenim $hat(L)\/hat(W) approx 0.0999 approx 0,10 = lambda$, verificant la Llei de Little. No obstant, cal destacar que no succeeix el mateix amb $hat(L_q)\/hat(W_q) approx 0.1477$.
 
 == Resultats de la instància
 
-Finalment, encapsulem el conjunt de paràmetres de la instància del Grup 2 en la carpeta `input_parameters/grup2`, on trobem els fitxers `rho<j>.json`, un per cada factor de càrrega $rho_j$, $j = 1,dots,4$. Seguint l'enunciat de la pràctica fixem $T = 300$, de forma que no estem al límit, a un context on podríem trobar la Llei de Little si el sistema d'espera satisfés les característiques adequades. Donat que en aquest cas l'horitzó temporal és petit, realitzarem en cada cas $B = 10,000,000$ simulacions:
+Finalment, encapsulem el conjunt de paràmetres de la instància del Grup 2 en la carpeta `input_parameters/grup2`, on trobem els fitxers `rho<j>.json`, un per cada factor de càrrega $rho_j$, $j = 1,dots,4$. Seguint l'enunciat de la pràctica fixem $T = 300$ min, de forma que no estem teòricament al límit, a un context on podríem trobar la Llei de Little, sino que el sistema està en un estat transitori. Donat que en aquest cas l'horitzó temporal és petit, realitzarem en cada cas $B = 10^7$ simulacions. Fixem també el paràmetre `seed = 42` per reproducibilitat:
 
 #figure(
-  caption: [Estimació de magnituds del S.E. (Grup 2)],
+  caption: [Estimació de magnituds del S.E. (Grup 2, $T = 300$ min, $B = 10^7$)],
   table(
     columns: (auto, auto, auto, auto, auto),
     inset: 10pt,
@@ -541,49 +504,187 @@ Finalment, encapsulem el conjunt de paràmetres de la instància del Grup 2 en l
     
     // Row 1: Avg Clients (L)
     $hat(L)$,   
-    $31.3736 plus.minus 3.59 dot 10^(-3)$,
-    $66.3670 plus.minus 4.65 dot 10^(-3)$,
-    $98.8798 plus.minus 5.48 dot 10^(-3)$,
-    $121.3899 plus.minus 5.99 dot 10^(-3)$,
+    $3.4890 plus.minus 8.19 dot 10^(-4)$,
+    $8.7156 plus.minus 2.64 dot 10^(-3)$,
+    $17.8954 plus.minus 6.13 dot 10^(-3)$,
+    $28.0258 plus.minus 9.30 dot 10^(-3)$,
     
     // Row 2: Avg Clients Queue (Lq)
     $hat(L_q)$, 
-    $18.8941 plus.minus 3.42 dot 10^(-3)$,
-    $53.4332 plus.minus 4.68 dot 10^(-3)$,
-    $85.9048 plus.minus 5.52 dot 10^(-3)$,
-    $108.4048 plus.minus 6.02 dot 10^(-3)$,
+    $3.4316 plus.minus 8.11 dot 10^(-4)$,
+    $8.5343 plus.minus 2.63 dot 10^(-3)$,
+    $17.5663 plus.minus 6.13 dot 10^(-3)$,
+    $27.6051 plus.minus 9.31 dot 10^(-3)$,
 
     // Row 3: Avg Queue Time (Wq)
     $hat(W_q)$, 
-    $38.0407 plus.minus 8.15 dot 10^(-3)$,
-    $60.9849 plus.minus 1.03 dot 10^(-2)$,
-    $70.1780 plus.minus 1.14 dot 10^(-2)$,
-    $73.9607 plus.minus 1.20 dot 10^(-2)$,
+    $11.3146 plus.minus 2.51 dot 10^(-3)$,
+    $15.8730 plus.minus 4.86 dot 10^(-3)$,
+    $23.4463 plus.minus 8.48 dot 10^(-3)$,
+    $30.9548 plus.minus 1.10 dot 10^(-2)$,
 
     // Row 4: Avg Service Time (Ws)
     $hat(W_s)$, 
-    $76.8470 plus.minus 5.96 dot 10^(-3)$,
-    $78.1376 plus.minus 5.56 dot 10^(-3)$,
-    $78.1898 plus.minus 5.55 dot 10^(-3)$,
-    $78.1955 plus.minus 5.56 dot 10^(-3)$,
+    $0.2815 plus.minus 3.50 dot 10^(-5)$,
+    $0.4443 plus.minus 5.30 dot 10^(-5)$,
+    $0.5714 plus.minus 5.70 dot 10^(-5)$,
+    $0.6327 plus.minus 5.80 dot 10^(-5)$,
 
     // Row 5: Avg Total Time (W)
     $hat(W)$,   
-    $114.8877 plus.minus 1.12 dot 10^(-2)$,
-    $139.1225 plus.minus 1.22 dot 10^(-2)$,
-    $148.3678 plus.minus 1.31 dot 10^(-2)$,
-    $152.1562 plus.minus 1.36 dot 10^(-2)$,
+    $11.5960 plus.minus 2.53 dot 10^(-3)$,
+    $16.3173 plus.minus 4.89 dot 10^(-3)$,
+    $24.0177 plus.minus 8.49 dot 10^(-3)$,
+    $31.5874 plus.minus 1.10 dot 10^(-2)$,
+
+    // Row 6: L/W (Little's Law Check)
+    $hat(L)\/hat(W)$,   
+    $0.3008$,
+    $0.5341$,
+    $0.7450$,
+    $0.8872$,
+
+    // Row 7: Lq/Wq
+    $hat(L_q)\/hat(W_q)$,   
+    $0.3033$,
+    $0.5377$,
+    $0.7492$,
+    $0.8917$,
 
     table.hline(stroke: 1pt),
   ),
   supplement: "Taula"
-)
+)<tab:inst>
+\
+La @tab:inst presenta els resultats obtinguts després d'executar $B= 10^7$ de rèpliques per a cada escenari de càrrega. L'anàlisi d'aquestes magnituds ens permet destacar quatre comportaments fonamentals del sistema:
+
++ 
+  $hat(L)\/hat(W)$ aproxima amb precisió la freqüència d'arribades ($lambda approx rho$) per als escenaris de càrrega baixa i mitjana. No obstant això, per al cas de màxima congestió ($rho=0.90$), el rati obtingut és de $0.8872$, lleugerament inferior al teòric.
+
++ 
+  A diferència de models més simples, el temps mig d'espera no és constant sinó que creix significativament amb la congestió.
+  - Amb baixa càrrega, $rho=0.3$, l'espera és d'aproximadament $11.3$ minuts. Tenint en compte que l'interval mig entre busos és de aproximadament $10$ minuts, això indica que la gran majoria d'usuaris pugen al primer autobús que arriba.
+  - Amb alta càrrega, $rho=0.9$, l'espera es dispara fins als $31$ minuts. Això implica que, en mitjana, un usuari ha de deixar passar entre 2 i 3 autobusos abans de poder pujar-hi, evidenciant l'impacte crític de la capacitat limitada provocada per la distribució exponencial truncada.
+
++ 
+  La longitud mitjana de la cua creix de manera no lineal. Passem de tenir $3.4$ usuaris esperant en el cas tranquil a $27.6$ usuaris en el cas congestionat.
+
++ 
+  Els intervals de confiança obtinguts són extremadament estrets (amb un error relatiu inferior a l'1% en tots els casos). Això confirma que el nombre de rèpliques utilitzat ($B=10^7$) ha estat suficient per proporcionar estimadors molt fiables del comportament mitjà del sistema.
 
 \
 
 #text(blue)[
   TODO: Posar fotos rexulonas de histogrames de $W$ com demana our lord and saviour
 ]
+
+== Validació de la Llei de Little
+
+A l'execució de la configuració desginada per l'enunciat de la pràcica hem pogut observar com la proporció entre els valors estimats de $L$ i $W$, així com $L_q$ i $W_q$ s'aproxima en cada cas a $lambda_j$. No obstant, aquesta aproximació no és molt propera, un fet que és d'esperar degut al horitzó fixat de $T = 300$. 
+\
+
+En aquest apartat volem anar més enllà del _scope_ del que es demana a l'enunciat per aprofitar per posar a prova la nostra implementació del simulador, i aproximar de forma arbitràriament precisa aquests quocients mitjançant un horitzó de $T = 10^6$ min i $B = 10^4$ simulacions mentres mantenim la resta de paràmetres igual. Els fitxers de configuració de paràmetres en aquest cas són `input_params/little/rho<j>.json` per $j=1,...,4$
+
+#figure(
+  caption: [Estimació de magnituds del S.E. (Grup 2, $T = 10^6$ min, $B = 10^4$)],
+  table(
+    columns: (auto, auto, auto, auto, auto),
+    inset: 10pt,
+    align: (col, row) => (if col == 0 { left } else { center }),
+    stroke: none,
+    table.header(
+      [*Magnitud*], 
+      [*$rho = 0.30$*], 
+      [*$rho approx 0.53$*], 
+      [*$rho = 0.75$*], 
+      [*$rho = 0.90$*],
+      table.hline(stroke: 1pt),
+    ),
+    
+    // Row 1: Avg Clients (L)
+    $hat(L)$,   
+    $3.6855 plus.minus 5.07 dot 10^(-4)$,
+    $9.9791 plus.minus 2.22 dot 10^(-3)$,
+    $29.0626 plus.minus 1.47 dot 10^(-2)$,
+    $193.5186 plus.minus 5.94 dot 10^(-1)$,
+    
+    // Row 2: Avg Clients Queue (Lq)
+    $hat(L_q)$, 
+    $3.6229 plus.minus 5.02 dot 10^(-4)$,
+    $9.7723 plus.minus 2.21 dot 10^(-3)$,
+    $28.6535 plus.minus 1.46 dot 10^(-2)$,
+    $192.9403 plus.minus 5.94 dot 10^(-1)$,
+
+    // Row 3: Avg Queue Time (Wq)
+    $hat(W_q)$, 
+    $11.9932 plus.minus 1.57 dot 10^(-3)$,
+    $18.2411 plus.minus 4.03 dot 10^(-3)$,
+    $38.1210 plus.minus 1.93 dot 10^(-2)$,
+    $214.2862 plus.minus 6.59 dot 10^(-1)$,
+
+    // Row 4: Avg Service Time (Ws)
+    $hat(W_s)$, 
+    $0.2923 plus.minus 2.10 dot 10^(-5)$,
+    $0.4712 plus.minus 3.10 dot 10^(-5)$,
+    $0.6289 plus.minus 3.50 dot 10^(-5)$,
+    $0.7260 plus.minus 3.50 dot 10^(-5)$,
+
+    // Row 5: Avg Total Time (W)
+    $hat(W)$,   
+    $12.2855 plus.minus 1.58 dot 10^(-3)$,
+    $18.7123 plus.minus 4.05 dot 10^(-3)$,
+    $38.7499 plus.minus 1.94 dot 10^(-2)$,
+    $215.0122 plus.minus 6.59 dot 10^(-1)$,
+
+    // Row 6: L/W (Little's Law Check)
+    $hat(L)\/hat(W)$,   
+    $0.2999$,
+    $0.5333$,
+    $0.7500$,
+    $0.9000$,
+
+    // Row 7: Lq/Wq
+    $hat(L_q)\/hat(W_q)$,   
+    $0.3021$,
+    $0.5357$,
+    $0.7516$,
+    $0.9004$,
+
+    table.hline(stroke: 1pt),
+  ),
+  supplement: "Taula"
+)<tab:little>
+\
+A la @tab:little presentem els resultats amb un horitzó temporal llunyà ($T = 10^6$), la qual cosa ens permet observar el vertader règim estacionari del sistema. En efecte:
+
++ 
+  Comparant amb els resultats anteriors ($T=300$), veiem que per a càrregues baixes ($rho=0.3$) els resultats són idèntics ($hat(L_q) approx 3.6$). En canvi, per a $rho=0.9$, la cua mitjana ha passat de $28$ a $193$. Això demostra que amb $T=300$ el sistema encara es trobava en un estat transitori i no havia tingut temps d'assolir l'estat d'equilibri.
+
++
+  Tot i que per a $rho=0.90$ observem valors molt elevats ($hat(L_q) approx 193$ usuaris), aquests són valors finits i convergents. Si el sistema fos inestable ($rho > 1$), amb un horitzó de $T=10^6$, la cua hauria crescut arbitràriament. El fet que s'estabilitzi confirma que $rho < 1$, tot i que el sistema es troba en un estat de congestió màxima.
++ 
+  Gràcies a l'extensió de $T$, observem com el rati $hat(L)\/hat(W)$ per a $rho=0.90$ és exactament $0.9000$, el·liminant així el biaix introduït per la situació d'alta congestió al règim transitori.
+
++
+  Malgrat ser estable matemàticament, un temps d'espera de $hat(W_q) approx 214$ minuts (més de 3.5 hores) indica que el servei és inacceptable a efectes pràctics.
+
+#pagebreak()
+
+= Conclusions
+
+La realització d'aquesta pràctica ha permès desenvolupar i validar un motor de _Discrete-Event Simulation_ capaç de modelitzar sistemes de cues complexos amb distribucions amb memòria. A partir de l'anàlisi dels resultats presentats a l'apartat anterior, extraiem les següents conclusions principals:
+
++ 
+  La implementació ha demostrat ser correcta i precisa. En la primera fase, la coincidència gairebé exacta entre els valors teòrics i els simulats per a la cua $M\/M^([X])\/1\/K$ (amb un error relatiu inferior al $0.01%$) ha servit per certificar el bon funcionament del nucli del simulador.
+
++ 
+  L'extensió de l'horitzó temporal de $T = 300$ min a $T = 10^6$ min ens ha demostrat que en sistemes amb alta càrrega ($rho=0.9$), les simulacions de curta durada introdueixen un biaix sobre les estimacions de les magnituts del sistema, ja que mostra un estat transitori on la cua sembla moderada ($hat(L_q) approx 28$). Ha estat amb $T = 10^6$ que hem pogut observar el veritable règim estacionari, on la cua s'estabilitza en valors molt superiors ($hat(L_q) approx 193$).
+
++ 
+  Hem comprovat que la Llei de Little es troba present en tots els casos, però la seva verificació empírica depèn estretament de l'estabilitat temporal. Mentre que en l'escenari de $T=300$ s'observaven petites desviacions degudes a l'estat transitori, en l'escenari de $T=10^6$ la relació s'ha complert amb gran precisió fins i tot en el pitjor cas de càrrega.
+
++ 
+  Finalment, l'anàlisi de la instància ens porta a una conclusió pràctica rellevant des del punt de vista més aplicat dins de la Investigació Operativa. Tot i que hem demostrat analíticament i empíricament que el sistema és estable per a $rho=0.9$, el resultat és operativament inviable. Un temps d'espera mitjà de més de 3.5 hores per agafar un autobús és inacceptable des del punt de vista de l'usuari. Això demostra que garantir $rho < 1$ és una condició necessària per a l'estabilitat, però no suficient per a garantir una qualitat de servei adequada. Això permet arribar a la conclusió operativa que per arribar un funcionament òptim, el sistema requeriria augmentar la freqüència de pas o la capacitat dels vehicles per reduir el factor de càrrega a nivells factibles.
 
 #counter(heading).update(0)
 #set heading(numbering: (..nums) => {
