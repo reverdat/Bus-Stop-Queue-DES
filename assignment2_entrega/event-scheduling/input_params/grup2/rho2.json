@@ -11,7 +11,7 @@
         "hypo": [  0.333333, 0.142857 ]
     },
     "bus_capacity": { 
-        "exp_trunc": { "lambda": 0.10, "max": 30.0 } 
+        "exp_trunc": { "k": 30.0 } 
     },
     "boarding_time": { 
         "uniform": {"min": 2.0, "max": 8.0}
