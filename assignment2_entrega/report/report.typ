@@ -180,8 +180,8 @@ $ F_gamma^(-1) (u) = K ( 1 - frac(1,2) ln( e^2 - u(e^2 - 1) ))) $
 Per tant, utilitzem el mètode de generació de nombres aleatòris de la inversa per a generar un nombre qualsevol utilitzant aquesta distribució com $c = F^(-1)_gamma (u), 0 <= u <= 1$, tal com es veu implementat a `rng.zig`.
 
 Segons la nostra instància, també hem implementat un generador de nombres aleatòris de la Hypoexponencial, i adicionalment també hem fet implementacions de la Hyperexponencial i la Erlang. Per les dues primeres, ja que totes són combinacions de variables aleatòries seguint una exponencial les hem implementat seguint la definició:
-- Hypoexponencial: $ Y = sum_(i=1)^n X_i, X_i ~ "Exp"(lambda_i) $
-- K-Erlang: $ Y = sum_(i=1)^k X, X ~ "Exp"(lambda) $
+- Hypoexponencial: $ Y = sum_(i=1)^n X_i, X_i ~ "Exp"(lambda_i) text("ind.")$ 
+- $k$-Erlang: $ Y = sum_(i=1)^k X_i, X_i ~ "Exp"(lambda) text("i.i.d.")$
 
 Per la Hyperexponencial amb la següent densitat @hyperexponential:
 
