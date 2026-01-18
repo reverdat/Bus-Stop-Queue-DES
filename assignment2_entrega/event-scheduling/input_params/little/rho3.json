@@ -1,6 +1,6 @@
 {
   "iterations": 10000,
-  "seed": 42,
+  "seed": 34,
   "sim_config": {
     "horizon": 1000000.0,
     "system_capacity": 0,
