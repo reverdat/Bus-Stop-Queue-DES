@@ -45,13 +45,7 @@ pub fn loadConfig(allocator: std.mem.Allocator, file_path: []const u8) !json.Par
     return parsed_result;
 }
 
-/// Hola Arnau! Sóc en Pau, i això és un todo del que ens falta fer :)
-/// 1. Print de la Hypo, Hyper, kerlang, rexp_trunc ##### DONE
-/// 2. L'string de help, igual que comprovar si algun dels arguments és help (està commentat al main) ##### DONE
-/// 3. Calcular la mitjana dels waittimes dins de la funció i afergir-ho a sim results. Així i tot, l'anàlisi de dades el fem a python ### DONE
-/// 4. Mirar si podem escriure millor els strings dels usuaris mitjançant un format (eg, podem fer que sigui un csv si ho fem cleverly!)
-/// 5. Ara mateix el tema de les unitats és un caos. Els json estan TOTS ens minuts, però no sé si és la mateixa pregunta
-/// NOTA: ara, per no posar limits al sistema, system_capacity ha de ser 0 (es posa a maxInt a dins de la funció)
+
 const HELP =
     \\Usage: busstop_simulation <config_filepath>
     \\
@@ -217,7 +211,7 @@ pub fn main() !void {
     const app_config = loaded_data.value;
     const config = app_config.sim_config;
     const B = if (override_iterations) |iterations| iterations else app_config.iterations;
-                                                                  
+
     const seed = if (app_config.seed) |s| s else blk: {
         var os_seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&os_seed));
@@ -235,16 +229,35 @@ pub fn main() !void {
     if (B == 1) {
         try stdout.writeAll("Running the simulation once, saving 'traca.txt' and 'usertimes.csv'\n");
         try stdout.flush();
+         
+        // create the results folder
+        std.fs.cwd().access("results", .{}) catch |err| switch (err) {
+            error.FileNotFound => try std.fs.cwd().makeDir("results"),
+            else => return err,
+        };
 
+        const timestamp = std.time.timestamp();
+        
+        // buffers to hold the formatted file paths to avoid dynamic memory
+        var traca_path_buffer: [256]u8 = undefined;
+        var user_path_buffer: [256]u8 = undefined;
+
+        const traca_path = try std.fmt.bufPrint(&traca_path_buffer, "results/traca_{d}.txt", .{timestamp});
+        const user_path = try std.fmt.bufPrint(&user_path_buffer, "results/usertimes_{d}.csv", .{timestamp});
+        
         var traca_buffer: [64 * 1024]u8 = undefined;
-        const traca_file = try std.fs.cwd().createFile("traca.txt", .{ .read = false });
+        const traca_file = try std.fs.cwd().createFile(traca_path, .{ .read = false });
         var traca_writer = traca_file.writer(&traca_buffer);
         const twriter = &traca_writer.interface;
 
+        // add the system config in the traca file
+        try twriter.print("{f}\n", .{config}); 
+
         var user_buffer: [64 * 1024]u8 = undefined;
-        const user_file = try std.fs.cwd().createFile("usertimes.csv", .{ .read = false });
+        const user_file = try std.fs.cwd().createFile(user_path, .{ .read = false });
         var user_writer = user_file.writer(&user_buffer);
         const uwriter = &user_writer.interface;
+        
 
         var timer = try Timer.start();
         const results = try eventSchedulingBus(gpa, rng, config, twriter, uwriter);

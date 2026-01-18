@@ -102,6 +102,10 @@ pub fn main() !void {
     defer arena.deinit();
     var gpa = arena.allocator();
     
+    var buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&buffer);
+    const stdout = &stdout_writer.interface;
+    
     var prng = std.Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&seed));
@@ -140,12 +144,15 @@ pub fn main() !void {
     var erlang_sample = try sampleAlloc(&gpa, sample_size, erlang, &rand);
     defer erlang_sample.deinit(gpa);
 
-    try write_sample_to_file("../solver/samples/uniform.csv", unif_sample);
-    try write_sample_to_file("../solver/samples/exponential.csv", exp_sample);
-    try write_sample_to_file("../solver/samples/trunc_exp.csv", texp_sample);
-    try write_sample_to_file("../solver/samples/hypoexponential.csv", hypo_sample);
-    try write_sample_to_file("../solver/samples/hyperexponential.csv", hyper_sample);
-    try write_sample_to_file("../solver/samples/erlang.csv", erlang_sample);
+    try write_sample_to_file("../python/samples/uniform.csv", unif_sample);
+    try write_sample_to_file("../python/samples/exponential.csv", exp_sample);
+    try write_sample_to_file("../python/samples/trunc_exp.csv", texp_sample);
+    try write_sample_to_file("../python/samples/hypoexponential.csv", hypo_sample);
+    try write_sample_to_file("../python/samples/hyperexponential.csv", hyper_sample);
+    try write_sample_to_file("../python/samples/erlang.csv", erlang_sample);
+    
+    try stdout.writeAll("Finished writting samples in ../python/samples");
+    try stdout.flush();
 }
 
 fn write_sample_to_file(name: []const u8, sample: ArrayList(f64)) !void {
