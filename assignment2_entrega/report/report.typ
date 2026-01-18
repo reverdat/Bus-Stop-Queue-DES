@@ -45,14 +45,14 @@
 
 L'objectiu principal d'aquesta pràctica és el disseny, implementació i anàlisi d'un motor de simulació d'esdeveniments discrets (Discrete Event Simulation) aplicat a un sistema d'espera d'una parada d'autobús. En aquest sistema interaccionen dues entitats principals, els usuaris (clients) i els autobusos (servidors), sota condicions d'incertesa en els temps d'arribada i capacitats.
 
-#text(blue)[
-Aquest document constitueix és la preentrega del treball. La finalitat d'aquesta fase inicial no és encara simular el sistema amb tota la seva complexitat estocàstica final, sinó establir una base sòlida de programari i validar-ne la correcció (verificació del model). Per aconseguir-ho, s'assumeix un conjunt d'hipòtesis simplificadores, com ara temps de servei nuls i taxes exponencials, que permeten modelitzar la parada teòricament com una cua markoviana $M\/M^([X])\/1\/K$. Aquesta reducció és crucial en aquesta etapa, ja que ens permet obtenir solucions analítiques exactes de l'estat estacionari i utilitzar-les com a referència per auditar la precisió del nostre simulador.
-]
+
+Aquest document constitueix l'entrega final del projecte. El treball consolida la preentrega entregada el mes passat, on es modelitza la parada com una cua markoviana $M\/M^([X])\/1\/K$ per tal de validar la implementació inicial del motor i ara estén les capacitats per abordar la complexitat de la instància assignada (Grup 2). Així, el simulador evoluciona des d'una primera iteració amb hipòtesis simples fins a un sistema robust capaç de gestionar distribucions temporals no-markovianes, com la Hipoexponencial o l'Exponencial Truncada, així com capacitats limitades.
+
 
 La metodologia de treball s'ha basat en la implementació de l'algorisme de programació d'esdeveniments (_Event-Scheduling_) utilitzant el llenguatge de sistemes Zig, prioritzant l'eficiència computacional i la gestió robusta de memòria per a la generació de trajectòries llargues.
 
-#text(blue)[
-A continuació, es presenta primer la definició formal del sistema i la seva justificació teòrica. Seguidament, es detallen les decisions d'arquitectura preses durant la implementació en Zig. Finalment, es comparen els resultats estadístics de la simulació (concretament l'ocupació mitjana del sistema segons la Llei de Little) amb els valors teòrics esperats per demostrar la validesa del simulador desenvolupat. Als appendix s'hi troba un manual d'ajuda per a l'execució del codi i compilació, a més a més de diversos extres que han sorgit durant la entrega.]
+
+A continuació, s'estructura la memòria en tres blocs principals. Primer, es detalla la implementació del motor en Zig, posant en èmfasi les decisions d'arquitectura (Min-Heap d'esdeveniments) i el desacoblament de les distribucions de probabilitat. Segon, es presenta la validació tècnica mitjançant la comparativa amb resultats analítics exactes de l'estat estacionari. Finalment, s'analitza en profunditat la instància del Grup 2, estudiant l'impacte crític en l'estabilitat del sistema de l'horitzó temporal mitjançant els valors $T=300$ i adicionalment $T=10^6$.
 
 = Definició del Sistema
 En aquesta secció formalitzem el funcionament de la parada d'autobús. El sistema es modelitza com un procés estocàstic de temps continu on interactuen dues entitats: els usuaris (que arriben i fan cua) i el servidor (l'autobús que arriba, carrega usuaris i marxa). Detallarem certes hipòtesis que justifiquem les decisions que hem pres a l'hora d'implementar el model. 
@@ -75,66 +75,22 @@ Com a sistema d'espera ens interessa estudiar una serie de magnituts que resulte
 
 == Modelització
 
-#text(blue)[
-  He tingut una miqueta de habbit hole amb això. resulta que aquestes cues en bulk son un tipus de cua conegut, per tant és classificable.
-
-  Tenim que aquest tipus de cues son amb "vacances" ja que els servidor atent no regularment (quan arriba l'autobus) i el temps entre busos és exponencial. Les vacances poden ser
-  - múltiples: el servidor marxa, si quan torna no hi ha ningú torna a fer unes altres vacances
-  - simple: el servidor marxa, si quan torna no hi ha ningú a la cua es manté allà.
-
-  Així i tot, la idea seria que la cua és això, concretament pel grup 2
-
-  $M\/G^((Y))\/1\/"Vac" "amb multiples vacances"$
-  
-  - M: temps entre arribades d'usuaris -> exponencial normal ergo M
-  - G: General, ja que pot ser diverses coses segons Don Codina.
-  - Y: temps de pujada de passatgers: Y és perque la batchsize és random (la capacitat del bus)
-  - 1: un servidor
-  - Vac: cada quan "retorna" o n'arriba un de nou vaja de busos. Això és la Hypo-Exponencial
-  
-  les fonts d'això són... complicades xd. Era tot tan dispers que he fet un deep research amb el gemini, perque els llibres que hi havia sobre el tema eren massa teòrics i no m'explicaven com classifica-les 
-  
-  Si et poses perepunyetes, crec que la M pot posar-se com $"GI"$, que és general interarrival si en algun moment no és exponencial, però no és el nostre cas (en el grup dos)
-
-  SUPER CONCRETAMENT, la del grup dos pot ser això: $M\/G^((Y))\/1\/K\/"Hypo"$. Diguem-ne que és complicat
-
-  PROPOSTA EN NET:
-]
-
-#text(red)[
-
   El sistema d'espera descrit anteriorment es pot identficar de manera general amb una notació de Kendall @kendall-notation ampliada (com generalitzar les cues en bulk @chaudhry-templeton-41 @chaudhry-templeton-42) (concepte vacances simples i múltiples @fiems-queues-survey):
 
-  $ "GI"\/G^((Y))\/1\/K\/"Vac" "amb vacances múltiples" $  
+  $ "GI"\/G^([Y])\/1\/K\/"Vac" "amb vacances múltiples" $  
 
   On cada una de les magnituds representa el següent:
-  - $"GI"$ (_General Independent_): el temps entre dues arribades segueix una distribució en genera.
-  - $G^((Y))$ (_General Bulk Service_): el servei és en _bulk_ (per lots), on concretament la mida depend d'una variable aleatòria $Y$. El superíndex denota la capacitat estocàstica en cues de transport.
-  - $1$: Només un servidor (la marquesina), els busos arriben d'un en un.
-  - $K$: capacitat màxima d'usuaris al sistema, que pot ser infinita.
-  - $"Vac"$ (Vacances): com es comporta el servidor quan no hi ha usuaris presents. Hi ha dos tipus de vacances: (1) múltiples si quan no hi ha ningú a la cua i el servidor arriba, aquest s'espera a els següents usuaris; (2) simple, el servidor s'espera a servir usuaris encara que quan arribi no n'hi hagi cap.
+  + 
+    $"GI"$ (_General Independent_): el temps entre dues arribades són v.a. independents que segueixe una distribució en general.
+  + 
+    $G^([Y])$ (_General Bulk Service_): el servei és en _bulk_    (per lots), on concretament la mida depèn d'una v.a. $Y$. El superíndex denota la capacitat estocàstica en cues de transport.
+  + 
+    $1$: només un servidor (la marquesina), els busos arriben d'un en un.
+  +
+   $K$: capacitat màxima d'usuaris al sistema, que pot ser infinita.
+  +
+   $"Vac"$ (Vacances): com es comporta el servidor quan no hi ha usuaris presents. Hi ha dos tipus de vacances: (1) múltiples si quan no hi ha ningú a la cua i el servidor arriba, aquest s'espera a els següents usuaris; (2) simple, el servidor s'espera a servir usuaris encara que quan arribi no n'hi hagi cap.
 
-  Més concretament, la instància que ens ha estat proporcionada per a avaluar es pot classificar com una $M\/G^((Y))\/1\/K\/"Hypo" "amb vacances multiples"$ definida pels paràmetres següents:
-  + Temps d'arribada entre usuaris ($M$): El temps entre arribades consequtives a la marquesina és $tau_A = t_(A, i+1) - t_(A, i)$. Segueix una exponencial $tau_A ~ "Exp"(lambda)$
-  + Capacitat del bus (Y): La capacitat dels autobusos és una exponencial truncada amb màxim $C_("max") = 40$. Si $X$ és la exponencial base, definim $Y$ com
-  $ Y ~ "TuncExp"(40) = min{40, X} "on" X ~ "Exp"(eta) $
-  - Servidor: Només té un servidor.
-  - Capacitat del sistema: no hi ha capacitat màxima.
-  - Arribada de busos: El temps d'arribada entre bus i bus segueix una Hypoexponencial de dues fases $X ~ "Hypo"(3,7)$.
-
-  La Hypoexponencial es defineix com la suma de variables aleatòries amb paràmetres diferents.
-
-  $ T_("bus") ~ "Hypo"(lambda_1, ..., lambda_n) = sum_(i=1)^n X_i "on" X_i ~ "Exp"(lambda_i)$
-
-]
-
-El sistema d'espera descrit anteriorment es pot identificar amb una cua amb working vacations, amb la següent notació $$ mitjançant una serie de hipòtesis que es defineixen a continuació. A continuació es proporciona una simple demostració d'aquesta afirmació que no busca ser rigorosa:
-1. El temps entre dues arribades d'usuaris consecutives a la marquesina $tau_(A, i+1) - tau_(A, i)$ és una v.a. que segueix una llei exponencial de paràmetre fix $lambda$.
-2. El temps d'arribada entre busos a la parada $tau_(B, i+1) - tau_(B, i)$ és una v.a. que segueix una llei exponencial de paràmetre fix $mu$.
-3. El temps que triga un usuari a pujar de la marquesina $tau_C$ al bus és una v.a. degenerada i de valor constant $nu approx 0$.
-Sigui $(n, c) in bb(Z)_(+)^(2)$ l'estat del sistema d'espera en un determinat instant de temps, on $n$ és el nombre d'usuaris a la marquesina i $c$ és la capacitat restant del bus.
-- Si $c = 0$, aleshores pel definit assumim que no hi ha un autobús a la parada. Per tant, només pot succeïr que arribi un altre usuari a la cua definida per la marquesina, o bé que arribi un autobús a la parada amb una determinada capacitat $c^prime$, i per tant es correspon amb transicions a l'estat $(n+1, 0)$ només si $n+1 <= K$ o bé a $(n, c^prime)$, respectivament.
-- Si $c > 0$, aleshores en aquest instant es troben $n$ usuaris a la marquesina i un bus amb capacitat restant $c$ estacionat a la parada. Per tant, només pot succeïr que un usuari pugi a l'autobús o bé que arribi un altre usuari a la marquesina, transicionant als estats $(n-1, c-1)$ o $(n+1, c)$ només si $n+1 <= K$, respectivament. Les transicions del primer tipus triguen un temps $nu$ que suposem aproximadament nul.
 
 \
 #figure(
@@ -145,67 +101,6 @@ Sigui $(n, c) in bb(Z)_(+)^(2)$ l'estat del sistema d'espera en un determinat in
   supplement: [Figura],
 )<fig:markov_bus>
 \
-
-Observem que el fet que el temps de pujada a l'autobús sigui aproximadament nul implica que, un cop arriba un autobús i el sistema es troba en l'estat $(n, c)$, aleshores la pròxima transició és $(n, c) -> (n-1, c-1)$ amb probabilitat aproximadament 1, i aquesta transició succeeix casi immediatament. Aquest comportament es repeteix indefinidament fins que el sistema arriba a l'estat $(n^prime, 0)$ per algun $n^prime >= 0$. 
-
-Per tant, aquesta cadena de transicions immediates provoca que els $c$ serveis individuals s'agrupin en essencialment un únic servei en lot de $c$ usuaris, i permet ignorar la capacitat de l'autobús com a part de l'estat del sistema per considerar únicament el nombre d'usuaris a la marquesina $n$. D'aquesta forma, el sistema d'espera es simplifica a únicament les següents transicions:
-- Si $n = 0$, aleshores no hi han usuaris esperant a la marquesina, i només pot succeïr que arribi un nou usuari, i per tant $0 -> 1$.
-- Si $0 < n < K$, aleshores hi ha un determinat nombre d'usuaris esperant a la marquesina. Per tant pot arribar un usuari nou, $n -> n+1$, o bé pot arribar un autobús amb capacitat $c$ que recull immediatament a tants  usuaris com pot i marxa, $n -> max(0, n-c)$.
-- Altrament, si $n = K$, la marquesina no té més capacitat i per tant no admet més usuaris. Només pot passar $K-> max(0, K-c)$ al arribar un autobús amb capacitat $c$.
-
-Finalment, observem que l'esquema de transicions definit, juntament amb els temps entre arribades exponencials tan d'usuaris com d'autobusos a la parada, impliquen que la parada d'autobús sota aquestes hipòtesis es comporta com una cua $M$/$M^([X])$/$1$/$K$, és a dir, una cua on:
-
-- $M$: Temps entre arrivades exponencial.
-- $M^([X])$: Temps de servei exponencial amb taxa per _batches_ (lots) de capacitat aleatòria.
-- $1$: Un únic servidor.
-- $K$: Capacitat del sistema (finita). \u{25A1}
-
-\
-#figure(
-  image("img/mmx1k.jpg", width: 90%),
-  caption: [
-    Diagrama de transicions d'una cua $M\/M^([3])\/1\/K$ (exemple)
-  ],
-  supplement: [Figura],
-)<fig:mmx1k>
-\
-
-Una representació general del diagrama de transicions de la parada d'autobús és donada per la #ref(<fig:markov_bus>), i per la seva simplificació #ref(<fig:mmx1k>).
-
-
-== Estat estacionari i la Llei de Little
-
-#text(blue)[
-  HOLA ARNAU :D Jo trauria tot aquest apartat explicant-ho tot i ho resumiria a un apartat entre la implementació i els resultats que es digui == Test/Verificacions, què et sembla?
-]
-El fet que el comportament teòric del sistema d'espera de la parada d'autobús sigui equivalent a una cua $M$/$M^([X])$/$1$/$K$ sota aquestes condicions ens permet resoldre les equacions del seu estat estacionari de la cadena de Màrkov asssociada.
-
-Per calcular les probabilitats d'estat estacionari $P_n$, plantegem les equacions d'equilibri global de la cadena de Markov contínua. L'estructura de transicions dona lloc al sistema lineal $Q^T P = 0$ juntament amb la normalització $sum_(n=0)^K P_n = 1$ i $P_n >= 0$. Fixem la capacitat de l'autobús com a una v.a. constant $X equiv c = 3$ i la marquesina $K = 9$. Formalment, hem de resoldre el sistema d'equacions:
-
-
-\
-$
-Q = mat(
-  -lambda, lambda, 0, 0, 0, 0, 0, 0, 0, 0;
-  mu, -mu -lambda, lambda, 0, 0, 0, 0, 0, 0, 0;
-  mu, 0, -mu -lambda, lambda, 0, 0, 0, 0, 0, 0;
-  mu, 0, 0, -mu -lambda, lambda, 0, 0, 0, 0, 0;
-  0, mu, 0, 0, -mu -lambda, lambda, 0, 0, 0, 0;
-  0, 0, mu, 0, 0, -mu -lambda, lambda, 0, 0, 0;
-  0, 0, 0, mu, 0, 0, -mu -lambda, lambda, 0, 0;
-  0, 0, 0, 0, mu, 0, 0, -mu -lambda, lambda, 0;
-  0, 0, 0, 0, 0, mu, 0, 0, -mu -lambda, lambda;
-  0, 0, 0, 0, 0, 0, mu, 0, 0, -mu;
-)
-$
-
-$ Q^T P = 0 quad sum_(n=0)^K P_n = 1 quad P_n >= 0 $
-\
-Un cop obtingudes les probabilitats estacionàries $P_n$, podem calcular mesures de rendiment del sistema d'espera aplicant la Llei de Little. En particular, ens fixem en l'ocupació mitjana del sistema d'espera al llarg del temps,
-$ L = lambda W = sum_(n=0)^infinity n P_n. $
-Prendrem aquest valor teòric com a mètrica de referència per verificar la correcta implementació de la simulació.
-Referir-se a l'@app:implementacions_extres per veure com resoldre el sistema computacionalment i calcular $L$ com a funció de $(lambda, mu, X, K)$.
-
 
 = Implementació
 
@@ -219,7 +114,7 @@ L'algorisme _Event-Scheduling_ es basa en mantenir una llista ordenada dels esde
 
 En el cas de l'_Event-Scheduling_ no hem d'accedir a un element qualsevol, sinó que només hem d'accedir al primer element - el més pròxim al temps actual. Per tant, hem emprat una implementació de l'estructura Heap @heap, que guarda els elements sense ordre, però garanteix que el primer element de la estructura sempre serà el de menor temps, donant-nos un accés de $O(1)$. En comparació amb la llista, també guanyem en inserció, ja que un heap té un cost d'accés de $O(log_2(n))$ al usar una estructura d'arbre binari per emmagatzemar les dades. El heap és la millor estructura per aquest problema, ja que els requeriments que tenim són als d'accedir al mínim element el més ràpid possible, sense necessitat d'accedir o eliminar un esdeveniment qualsevol. Això sí, si que hem emprat una `ArrayList` per a guardar-nos la traça del problema.
 
-== Descacoblament de les Distribucions
+== Desacoblament de les Distribucions
 
 Tornant al cas concret del problema que ens ocupa, el problema té tres tipus d'esdeveniments (Arribada, Servei, Embarcament, però té quatre paràmetres aleatòris: rati d'arribades ($lambda$), rati de serveis ($mu$), capacitat del bus $C$ i temps d'embarcament $Y$, seguint totes una distribució. Hem aconseguit desacoplar completament la implementació i la lògica de l'algorisme mitjançant una unió sobre els diferents tipus que es vulguin demanar. Adicionalment de la Constant, Uniforme i Exponencial, s'han afegit la Exponencial truncada, la Hypo-Exponencial, la Hyper-Exponencial i la $k$-Erlang. S'ha emprat una estructura general que s'instancia com un tipus de distribució concreta, i no haver de programar ni la lògica de la generació de paràmetres aleartòris ni que a dins de l'algorisme hi hagi lògica de selecció segons el tipus de distribució. És a dir, la lògica de l'_Event-Scheduling_ i les distribucions dels paràmetres estan completament desacoplades. Això ho hem aconseguit mitjançant l'estructura @distribution.
 
@@ -242,7 +137,7 @@ pub const Distribution = union(enum) {
             .hypo => |rates| return sampling.rhypo(f64, rates, rng),
             .hyper => |p| return sampling.rhyper(f64, p.probs, p.rates, rng),
             .erlang => |p| return sampling.rerlang(f64, p.k, p.lambda, rng),
-            .exp_trunc => |p| return @min(sampling.rexp(f64, p.lambda, rng), p.max),
+            .exp_trunc => |p| return sampling.rtexp(f64, p.k, rng),
         }
     }
 }
@@ -389,9 +284,11 @@ La traça s'ha implementat d'una manera anàloga.
 
 Un cop implementat el motor de simulació, procedim en verificar la seva correcta programació mitjançant diverses instàncies preliminars per finalment executar la instància assignada al nostre grup.
 
-En el primer apartat es presenten els resultats sota els paràmetres que simplifiquen el sistema a la cua ja descrita en els apartats anteriors. Buscarem calcular principalment el valor de la ocupació mitjana del sistema d'espera $hat(L)$ per comparar-lo amb el valor teòric $L$ aconseguit mitjançant les equacions d'estat estacionari. Després, descriurem la instància assignada al nostre grup (Grup 2), analitzant amb detall les connotacions que aquesta comporta.
+En el primer apartat es presenten els resultats sota els paràmetres que simplifiquen el sistema a una cua més senzilla, tal i com es va tractar a la preentrega. Buscarem calcular principalment el valor de la ocupació mitjana del sistema d'espera $hat(L)$ per comparar-lo amb el valor teòric $L$ aconseguit mitjançant les equacions d'estat estacionari. Després, descriurem la instància assignada al nostre grup (Grup 2), analitzant amb detall la configuració de paràmetres proporcionada per observar les implicacions teòriques sota la nostra simulació abans de ser executada. Finalment, analitzarem adicionalment els resultats de la simulació de la instància Grup 2 per a un horitzó de temps llunyà.
 == Validació de la $M\/\M^([X])\/1\/K$
-Per reduïr la parada d'autobusos a la cua, recordem que tractem amb arribades d'usuaris i de busos Poissonianes de paràmetres $lambda$ i $mu$ respectivament, temps d'embarcament nuls, i capacitats de l'autobús $X$ i marquesina $K$ finites. Això porta a la definició del fitxer de paràmetres d'entrada `input_params/mmx1k.json`.
+Segons els resultats ja presentats a l'entrega i que justifiquem a l'Annex @sec:mmx1k, podem simplificar el sistema d'espera si tractem amb arribades d'usuaris i de busos Poissonianes de paràmetres $lambda$ i $mu$ respectivament, temps d'embarcament nuls, i capacitats de l'autobús $X$ i marquesina $K$ finites, de forma que obtenim una cua $M\/\M^([X])\/1\/K$. Sota aquest model podem computar amb facilitat la distribució estacionària del S.E. i en particular el valor teòric de $L$, un fet que s'assoleix si el factor de càrrega és $rho < 1$. Per tant, es pot prendre com a referència aquest valor de $L$ per tal de verificar que l'estimació desenvolupada pel simulador és correcte. 
+
+Això porta a la definició del fitxer de paràmetres d'entrada `input_params/mmx1k.json`.
 Fixem els mateixos paràmetres que a la preentrega,
 #align(center, table(
   columns: 4,
@@ -498,7 +395,7 @@ $
 $
 
 Cal destacar però que la marquesina no té capacitat finita, de forma que la cua pot crèixer arbitràriament. No obstant, aquesta garantia d'estabilitat implica que la Llei de Little es verifica en un horitzó temporal llunyà.
-\
+
 
 == Resultats de la instància
 
@@ -761,6 +658,73 @@ Així i tot, només hi ha un element d'`Event` al que se li faci un accés real 
 Al fitxer `multiheap.zig` s'ha reimplementat la mateixa estructura amb una `MulitArrayList`, on el que es fa és en comptes de tenir una llista d'structs, s'implementa com una estructura amb tres llistes, una per a cada argument. Aquesta implementació pot millorar el rendiment ja que només s'ha de moure tota l'estructura només un cop, mentre que les comparacions del camp temps es fan en una llista, que serà més ràpid que movent tota l'estructura i accedint al camp correcte una per una.
 
 Així i tot, no s'han aconseguit millores empíriques amb aquesta nova implementació. Sospitem que la raó és que l'estructura `Event` és massa petita per verure beneficis reals al dividir-la en multiples llistes, així que l'implementació final utiltiza `structheap.zig`.
+
+#pagebreak()
+= Identificació com a cua $M\/M^([X])\/1\/K$<sec:mmx1k>
+
+Com ja es va presentar a l'apartat de la preentrega, el sistema d'espera que representa la parada d'autobús es pot identificar amb una cua $M\/M^([X])\/1\/K$ mitjançant una serie de hipòtesis. A continuació es proporciona una simple demostració d'aquesta afirmació que no busca ser rigorosa:
+1. El temps entre dues arribades d'usuaris consecutives a la marquesina $tau_(A, i+1) - tau_(A, i)$ és una v.a. que segueix una llei exponencial de paràmetre fix $lambda$.
+2. El temps d'arribada entre busos a la parada $tau_(B, i+1) - tau_(B, i)$ és una v.a. que segueix una llei exponencial de paràmetre fix $mu$.
+3. El temps que triga un usuari a pujar de la marquesina $tau_C$ al bus és una v.a. degenerada i de valor constant $nu approx 0$.
+Sigui $(n, c) in bb(Z)_(+)^(2)$ l'estat del sistema d'espera en un determinat instant de temps, on $n$ és el nombre d'usuaris a la marquesina i $c$ és la capacitat restant del bus.
+- Si $c = 0$, aleshores pel definit assumim que no hi ha un autobús a la parada. Per tant, només pot succeïr que arribi un altre usuari a la cua definida per la marquesina, o bé que arribi un autobús a la parada amb una determinada capacitat $c^prime$, i per tant es correspon amb transicions a l'estat $(n+1, 0)$ només si $n+1 <= K$ o bé a $(n, c^prime)$, respectivament.
+- Si $c > 0$, aleshores en aquest instant es troben $n$ usuaris a la marquesina i un bus amb capacitat restant $c$ estacionat a la parada. Per tant, només pot succeïr que un usuari pugi a l'autobús o bé que arribi un altre usuari a la marquesina, transicionant als estats $(n-1, c-1)$ o $(n+1, c)$ només si $n+1 <= K$, respectivament. Les transicions del primer tipus triguen un temps $nu$ que suposem aproximadament nul.
+
+Observem que el fet que el temps de pujada a l'autobús sigui aproximadament nul implica que, un cop arriba un autobús i el sistema es troba en l'estat $(n, c)$, aleshores la pròxima transició és $(n, c) -> (n-1, c-1)$ amb probabilitat aproximadament 1, i aquesta transició succeeix casi immediatament. Aquest comportament es repeteix indefinidament fins que el sistema arriba a l'estat $(n^prime, 0)$ per algun $n^prime >= 0$. 
+
+Per tant, aquesta cadena de transicions immediates provoca que els $c$ serveis individuals s'agrupin en essencialment un únic servei en lot de $c$ usuaris, i permet ignorar la capacitat de l'autobús com a part de l'estat del sistema per considerar únicament el nombre d'usuaris a la marquesina $n$. D'aquesta forma, el sistema d'espera es simplifica a únicament les següents transicions:
+- Si $n = 0$, aleshores no hi han usuaris esperant a la marquesina, i només pot succeïr que arribi un nou usuari, i per tant $0 -> 1$.
+- Si $0 < n < K$, aleshores hi ha un determinat nombre d'usuaris esperant a la marquesina. Per tant pot arribar un usuari nou, $n -> n+1$, o bé pot arribar un autobús amb capacitat $c$ que recull immediatament a tants  usuaris com pot i marxa, $n -> max(0, n-c)$.
+- Altrament, si $n = K$, la marquesina no té més capacitat i per tant no admet més usuaris. Només pot passar $K-> max(0, K-c)$ al arribar un autobús amb capacitat $c$.
+
+Finalment, observem que l'esquema de transicions definit, juntament amb els temps entre arribades exponencials tan d'usuaris com d'autobusos a la parada, impliquen que la parada d'autobús sota aquestes hipòtesis es comporta com una cua $M$/$M^([X])$/$1$/$K$, és a dir, una cua on:
++ 
+  $M$: Temps entre arrivades exponencial.
++ 
+  $M^([X])$: Temps de servei exponencial amb taxa per _batches_ (lots) de capacitat aleatòria.
++ 
+  $1$: Un únic servidor.
++ 
+  $K$: Capacitat del sistema (finita). \u{25A1}
+
+\
+#figure(
+  image("img/mmx1k.jpg", width: 90%),
+  caption: [
+    Diagrama de transicions d'una cua $M\/M^([3])\/1\/K$ (exemple)
+  ],
+  supplement: [Figura],
+)<fig:mmx1k>
+\
+
+Una representació general del diagrama de transicions de la parada d'autobús és donada per la #ref(<fig:markov_bus>), i per la seva simplificació #ref(<fig:mmx1k>).
+
+El fet que el comportament teòric del sistema d'espera de la parada d'autobús sigui equivalent a una cua $M$/$M^([X])$/$1$/$K$ sota aquestes condicions ens permet resoldre les equacions del seu estat estacionari de la cadena de Màrkov asssociada.
+
+Per calcular les probabilitats d'estat estacionari $P_n$, plantegem les equacions d'equilibri global de la cadena de Markov contínua. L'estructura de transicions dona lloc al sistema lineal $Q^T P = 0$ juntament amb la normalització $sum_(n=0)^K P_n = 1$ i $P_n >= 0$. Fixem la capacitat de l'autobús com a una v.a. constant $X equiv c = 3$ i la marquesina $K = 9$. Formalment, hem de resoldre el sistema d'equacions:
+
+\
+$
+Q = mat(
+  -lambda, lambda, 0, 0, 0, 0, 0, 0, 0, 0;
+  mu, -mu -lambda, lambda, 0, 0, 0, 0, 0, 0, 0;
+  mu, 0, -mu -lambda, lambda, 0, 0, 0, 0, 0, 0;
+  mu, 0, 0, -mu -lambda, lambda, 0, 0, 0, 0, 0;
+  0, mu, 0, 0, -mu -lambda, lambda, 0, 0, 0, 0;
+  0, 0, mu, 0, 0, -mu -lambda, lambda, 0, 0, 0;
+  0, 0, 0, mu, 0, 0, -mu -lambda, lambda, 0, 0;
+  0, 0, 0, 0, mu, 0, 0, -mu -lambda, lambda, 0;
+  0, 0, 0, 0, 0, mu, 0, 0, -mu -lambda, lambda;
+  0, 0, 0, 0, 0, 0, mu, 0, 0, -mu;
+)
+$
+$ Q^T P = 0 quad sum_(n=0)^K P_n = 1 quad P_n >= 0 $
+\
+Un cop obtingudes les probabilitats estacionàries $P_n$, podem calcular mesures de rendiment del sistema d'espera aplicant la Llei de Little. En particular, ens fixem en l'ocupació mitjana del sistema d'espera al llarg del temps,
+$ L = lambda W = sum_(n=0)^infinity n P_n. $
+Prendrem aquest valor teòric com a mètrica de referència per verificar la correcta implementació de la simulació.
+Referir-se a l'@app:implementacions_extres per veure com resoldre el sistema computacionalment i calcular $L$ com a funció de $(lambda, mu, X, K)$.
+
 
 #pagebreak()
 = Càlculs Exponencial Truncada
