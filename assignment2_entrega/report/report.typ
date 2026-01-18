@@ -14,8 +14,30 @@
     margin: 1.25in,
 )
 
+#let appendix(body) = {
+  counter(heading).update(0)
+  
+  // 1. Set the numbering to "A.1" so the TOC aligns perfectly.
+  // 2. Set the supplement to "Appendix" (simple string/content).
+  //    This prevents the crash and ensures references say "Appendix A".
+  set heading(numbering: "A.1", supplement: [Appendix])
+
+  // 3. The Visual Show Rule
+  //    This adds "Appendix A:" to the page heading only.
+  //    It does NOT affect the TOC or References.
+  show heading.where(level: 1): it => {
+    let nr = numbering(it.numbering, ..counter(heading).at(it.location()))
+    block(below: 0.8em, text(weight: "bold", size: 1.2em)[
+      Appendix #nr: #it.body
+    ])
+  }
+
+  body
+}
+
+
 #set document(
-  title: [Simulaació Marquesina Autobús - Arnau Pérez, Pau Soler]
+  title: [Simulació Marquesina Autobús - Arnau Pérez, Pau Soler]
 )
 
 //#set math.equation(numbering: "1.")
@@ -41,6 +63,10 @@
     )
 ]
 
+#outline(indent: auto, title: "Índex")
+#pagebreak()
+
+
 = Introducció
 
 L'objectiu principal d'aquesta pràctica és el disseny, implementació i anàlisi d'un motor de simulació d'esdeveniments discrets (Discrete Event Simulation) aplicat a un sistema d'espera d'una parada d'autobús. En aquest sistema interaccionen dues entitats principals, els usuaris (clients) i els autobusos (servidors), sota condicions d'incertesa en els temps d'arribada i capacitats.
@@ -52,8 +78,12 @@ Aquest document constitueix l'entrega final del projecte. El treball consolida l
 La metodologia de treball s'ha basat en la implementació de l'algorisme de programació d'esdeveniments (_Event-Scheduling_) utilitzant el llenguatge de sistemes Zig, prioritzant l'eficiència computacional i la gestió robusta de memòria per a la generació de trajectòries llargues.
 
 
-A continuació, s'estructura la memòria en tres blocs principals. Primer, es detalla la implementació del motor en Zig, posant en èmfasi les decisions d'arquitectura (Min-Heap d'esdeveniments) i el desacoblament de les distribucions de probabilitat. Segon, es presenta la validació tècnica mitjançant la comparativa amb resultats analítics exactes de l'estat estacionari. Finalment, s'analitza en profunditat la instància del Grup 2, estudiant l'impacte crític en l'estabilitat del sistema de l'horitzó temporal mitjançant els valors $T=300$ i adicionalment $T=10^6$.
+A continuació, s'estructura la memòria en tres blocs principals. Primer, es detalla la implementació del motor en Zig, posant en èmfasi les decisions d'arquitectura (Min-Heap d'esdeveniments) i el desacoblament de les distribucions de probabilitat. Segon, es presenta la validació tècnica mitjançant la comparativa amb resultats analítics exactes de l'estat estacionari. Finalment, s'analitza en profunditat la instància del Grup 2, estudiant l'impacte crític en l'estabilitat del sistema de l'horitzó temporal mitjançant els valors $T=300$ i adicionalment $T=10^6$. S'entreguen diversos appendix que son citats al llarg del document. Aquests contenen o bé contingut extra (A, B, C, D i F) o contingut demanat però que no quedava bé en el flux de la memòria (appendix E).
 
+*Sobre la IA Generativa* El contingut d'aquesta memòria ha estat escrit, pensat i estructurat per humans, els seus autors. L'ús de IA generativa (model Gemini 3.0 Pro) s'ha emprat per formateig de les taules i les fonts de la biblografia, la cerca de fonts rellevants en la secció de Modelització i en la recerca de l'API pels tests d'ajustament de les distribucions en python.
+
+
+#pagebreak()
 = Definició del Sistema
 En aquesta secció formalitzem el funcionament de la parada d'autobús. El sistema es modelitza com un procés estocàstic de temps continu on interactuen dues entitats: els usuaris (que arriben i fan cua) i el servidor (l'autobús que arriba, carrega usuaris i marxa). Detallarem certes hipòtesis que justifiquem les decisions que hem pres a l'hora d'implementar el model. 
 
@@ -102,6 +132,7 @@ Com a sistema d'espera ens interessa estudiar una serie de magnituts que resulte
 )<fig:markov_bus>
 \
 
+#pagebreak()
 = Implementació
 
 Hem simulat el sistema de la marquesina mitjançant l'algorisme _Event-Scheduling_, que consisteix en que cada vegada que un esdeveniment d'un tipus concret succeeix, en generem un del mateix tipus per mantenir l'algorisme funcionant, fins que un dels esdeveniments superi l'horitzó temporal, no sent atès mai.
@@ -291,6 +322,7 @@ Aleshores, per a calcular la mitjana de les tres magnituds d'espera $W, W_s, W_q
 
 La traça s'ha implementat d'una manera anàloga.
 
+#pagebreak()
 = Resultats
 
 Un cop implementat el motor de simulació, procedim en verificar la seva correcta programació mitjançant diverses instàncies preliminars per finalment executar la instància assignada al nostre grup.
@@ -632,32 +664,32 @@ A la @tab:little presentem els resultats amb un horitzó temporal llunyà ($T = 
 
 La realització d'aquesta pràctica ha permès desenvolupar i validar un motor de _Discrete-Event Simulation_ capaç de modelitzar sistemes de cues complexos amb distribucions amb memòria. A partir de l'anàlisi dels resultats presentats a l'apartat anterior, extraiem les següents conclusions principals:
 
-+ 
-  La implementació ha demostrat ser correcta i precisa. En la primera fase, la coincidència gairebé exacta entre els valors teòrics i els simulats per a la cua $M\/M^([X])\/1\/K$ (amb un error relatiu inferior al $0.01%$) ha servit per certificar el bon funcionament del nucli del simulador.
++ La implementació ha demostrat ser correcta i precisa. En la primera fase, la coincidència gairebé exacta entre els valors teòrics i els simulats per a la cua $M\/M^([X])\/1\/K$ (amb un error relatiu inferior al $0.01%$) ha servit per certificar el bon funcionament del nucli del simulador.
 
-+ 
-  L'extensió de l'horitzó temporal de $T = 300$ min a $T = 10^6$ min ens ha demostrat que en sistemes amb alta càrrega ($rho=0.9$), les simulacions de curta durada introdueixen un biaix sobre les estimacions de les magnituts del sistema, ja que mostra un estat transitori on la cua sembla moderada ($hat(L_q) approx 22$). Ha estat amb $T = 10^6$ que hem pogut observar el veritable règim estacionari, on la cua s'estabilitza en valors molt superiors ($hat(L_q) approx 53$).
++ L'ús d'un llenguatge altament eficient, tot i tenir els seus inconvenients, ha donat molta flexibilitat en les execucions i en els reports de resultats. Que una execució es demori tan poc ens ha permès extendre a l'ordre de milions d'iteracions sense cap compromís de temps en maquinari molt modest. És més, amb les avantatges dels llenguatges moderns, tot i ser més complicat el desenvolupament en comparació amb un llenguatge interpretat, no s'ha sentit ordres de magnitud més feixuc.
 
-+ 
-  Hem comprovat que la Llei de Little es troba present en tots els casos, però la seva verificació empírica depèn estretament de l'estabilitat temporal. Mentre que en l'escenari de $T=300$ s'observaven petites desviacions degudes a l'estat transitori, en l'escenari de $T=10^6$ la relació s'ha complert amb gran precisió fins i tot en el pitjor cas de càrrega.
++ L'extensió de l'horitzó temporal de $T = 300$ min a $T = 10^6$ min ens ha demostrat que en sistemes amb alta càrrega ($rho=0.9$), les simulacions de curta durada introdueixen un biaix sobre les estimacions de les magnituts del sistema, ja que mostra un estat transitori on la cua sembla moderada ($hat(L_q) approx 22$). Ha estat amb $T = 10^6$ que hem pogut observar el veritable règim estacionari, on la cua s'estabilitza en valors molt superiors ($hat(L_q) approx 53$).
 
-+ 
-  Finalment, l'anàlisi de la instància ens porta a una conclusió pràctica rellevant des del punt de vista més aplicat dins de la Investigació Operativa. Tot i que hem demostrat analíticament i empíricament que el sistema és estable per a $rho=0.9$, el resultat és operativament inviable. Un temps d'espera mitjà de més de 3.5 hores per agafar un autobús és inacceptable des del punt de vista de l'usuari. Això demostra que garantir $rho < 1$ és una condició necessària per a l'estabilitat, però no suficient per a garantir una qualitat de servei adequada. Això permet arribar a la conclusió operativa que per arribar un funcionament òptim, el sistema requeriria augmentar la freqüència de pas o la capacitat dels vehicles per reduir el factor de càrrega a nivells factibles.
++ Hem comprovat que la Llei de Little es troba present en tots els casos, però la seva verificació empírica depèn estretament de l'estabilitat temporal. Mentre que en l'escenari de $T=300$ s'observaven petites desviacions degudes a l'estat transitori, en l'escenari de $T=10^6$ la relació s'ha complert amb gran precisió fins i tot en el pitjor cas de càrrega.
+
++ Finalment, l'anàlisi de la instància ens porta a una conclusió pràctica rellevant des del punt de vista més aplicat dins de la Investigació Operativa. Tot i que hem demostrat analíticament i empíricament que el sistema és estable per a $rho=0.9$, el resultat és operativament inviable. Un temps d'espera mitjà de més de 3.5 hores per agafar un autobús és inacceptable des del punt de vista de l'usuari. Això demostra que garantir $rho < 1$ és una condició necessària per a l'estabilitat, però no suficient per a garantir una qualitat de servei adequada. Això permet arribar a la conclusió operativa que per arribar un funcionament òptim, el sistema requeriria augmentar la freqüència de pas o la capacitat dels vehicles per reduir el factor de càrrega a nivells factibles.
 
 #pagebreak()
-#bibliography("works.yml")
+#bibliography("works.yml", title: "Bibliografia")
 
-#counter(heading).update(0)
-#set heading(numbering: (..nums) => {
-  let vals = nums.pos()
-  if vals.len() == 1 {
-    return "Annex " + numbering("A", ..vals)
-  } else {
-    return numbering("A.1", ..vals)
-  }
-}, supplement: none)
-
+// #counter(heading).update(0)
+// #set heading(numbering: (..nums) => {
+//   let vals = nums.pos()
+//   if vals.len() == 1 {
+//     return "Annex " + numbering("A", ..vals)
+//   } else {
+//     return numbering("A.1", ..vals)
+//   }
+// }, supplement: none)
+//
 #pagebreak()
+
+#appendix[
 = Ús i Execució del Codi
 
 A l'entrega s'hi poden trobar els binaris per a les tres plataformes i arquitectures principals (MacOS (aarch64), Windows (x86) i GNU-Linux (x86)) per executar el codi. Per tant, per a executar-lo és tan senzill com obrir una terminal, navegar fins a la carpeta on es troba el binari i executar-lo. El programa necessita un argument a la terminal, el camí relatiu des de l'executable al json.
@@ -876,6 +908,6 @@ Seguidament, per confirmar que erem capaços d'implementar Zig amb prou soltura,
 
 Com a detall extra, vàrem comentar de paraula que entregariem una llibreria de python amb l'algorisme compilat. Malauradament, això no ha estat possible per problemes tècnics que van més enllà de l'abast de la pràctica i dels nostres coneixements. Per poder empaquetar el binari de Zig en una llibreria de Python, s'ha intentat usar `Ziggy-Pydust`, una llibreria que genera totes les dependències extres per a poder cridar el binari des de Python. Amb poc intents i seguint la documentació, hem aconseguit que funcioni perfectament per a Linux, però la llibreria és massa jove com per a tenir support per a Windows, per això vam haver de desestimar la iniciativa i entregar un binari directament.
 
-
+]
 
 
