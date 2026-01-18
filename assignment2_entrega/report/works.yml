@@ -47,6 +47,39 @@ fiems-queues-survey:
   url: "https://doi.org/10.3390/math13111894"
   date-accessed: 2026-01-16
 
+hyperexponential:
+  type: entry
+  title: "Hyperexponential distribution"
+  author: "Wikipedia contributors"
+  date: 2025-05-09
+  url: "https://en.wikipedia.org/wiki/Hyperexponential_distribution"
+  date-accessed: 2026-01-18
+  parent:
+    title: "Wikipedia"
+    type: web
+
+scipy-kstest:
+  type: entry
+  title: "scipy.stats.kstest"
+  author: "SciPy Community"
+  date: 2025
+  url: "https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kstest.html"
+  date-accessed: 2026-01-18
+  parent:
+    title: "SciPy v1.15.0 Reference Guide"
+    type: web
+
+scipy-stats:
+  type: entry
+  title: "Statistical functions (scipy.stats)"
+  author: "SciPy Community"
+  date: 2025
+  url: "https://docs.scipy.org/doc/scipy/reference/stats.html"
+  date-accessed: 2026-01-18
+  parent:
+    title: "SciPy v1.15.0 Reference Guide"
+    type: web
+
 zig:
   type: Web
   title: The Zig Programming Language
