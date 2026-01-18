@@ -645,7 +645,7 @@ La realització d'aquesta pràctica ha permès desenvolupar i validar un motor d
   Finalment, l'anàlisi de la instància ens porta a una conclusió pràctica rellevant des del punt de vista més aplicat dins de la Investigació Operativa. Tot i que hem demostrat analíticament i empíricament que el sistema és estable per a $rho=0.9$, el resultat és operativament inviable. Un temps d'espera mitjà de més de 3.5 hores per agafar un autobús és inacceptable des del punt de vista de l'usuari. Això demostra que garantir $rho < 1$ és una condició necessària per a l'estabilitat, però no suficient per a garantir una qualitat de servei adequada. Això permet arribar a la conclusió operativa que per arribar un funcionament òptim, el sistema requeriria augmentar la freqüència de pas o la capacitat dels vehicles per reduir el factor de càrrega a nivells factibles.
 
 #pagebreak()
-#bibliography("works.yml")
+#bibliography("works.yml", title: "Bibliografia")
 
 #counter(heading).update(0)
 #set heading(numbering: (..nums) => {
