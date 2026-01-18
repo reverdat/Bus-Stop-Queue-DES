@@ -17,7 +17,7 @@ pub const Distribution = union(enum) {
     hypo: []f64, // directament les esperances
     hyper: struct { probs: []const f64, rates: []f64 }, // probabilitats del branching i els ratis de cada exponencial
     erlang: struct { k: usize, lambda: f64 }, // shape, scale
-    exp_trunc: struct { lambda: f64, max: f64 },
+    exp_trunc: struct { k: f64 },
 
     pub fn sample(self: Distribution, rng: Random) !f64 {
         switch (self) {
@@ -27,7 +27,7 @@ pub const Distribution = union(enum) {
             .hypo => |rates| return sampling.rhypo(f64, rates, rng),
             .hyper => |p| return sampling.rhyper(f64, p.probs, p.rates, rng),
             .erlang => |p| return sampling.rerlang(f64, p.k, p.lambda, rng),
-            .exp_trunc => |p| return @min(sampling.rexp(f64, p.lambda, rng), p.max),
+            .exp_trunc => |p| return sampling.rtexp(f64, p.k, rng),
         }
     }
 
@@ -54,9 +54,10 @@ pub const Distribution = union(enum) {
             .hyper => |rates_probs| {
                 for (rates_probs.rates) |*r| r.* /= factor;
             },
+            // la exp_trunc és en realitat una exp amb 2/K, ergo multiplicar directament per factor ho ajusta
+            // si factor (QUE HO HAURIA DE SER) és 1/60
             .exp_trunc => |*et| {
-                et.lambda /= factor; // Rate scales inversely
-                et.max *= factor; // Max limit is a Time unit, so it scales directly
+                et.k *= factor; // Max limit is a Time unit, so it scales directly
             },
         }
     }
@@ -84,7 +85,7 @@ pub const Distribution = union(enum) {
                 }
             },
             .erlang => |k_rate| try writer.print("Erl(k={d}, λ={d:.1})", .{ k_rate.k, k_rate.lambda }),
-            .exp_trunc => |rate_max| try writer.print("ExpTrunc(λ={d:.1}, max={d:.1})", .{ rate_max.lambda, rate_max.max }),
+            .exp_trunc => |rate_max| try writer.print("ExpTrunc(λ=2/{d:.1})", .{ rate_max.k }),
         }
     }
 };

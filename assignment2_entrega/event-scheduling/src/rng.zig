@@ -40,6 +40,11 @@ pub fn rexp(comptime T: type, lambda: T, rng: Random) T {
     return (1 / lambda) * (-@log(u));
 }
 
+pub fn rtexp(comptime T: type, k: T, rng: Random) T {
+    const u = runif(T, 0, 1, rng) catch unreachable;
+    const e = std.math.e;
+    return k*(1 - 0.5*@log(e*e - u*(e*e - 1)));
+}
 /// Erlang distribution (Sum of k independent exponentials with rate lambda)
 /// k: shape (number of phases)
 /// lambda: rate

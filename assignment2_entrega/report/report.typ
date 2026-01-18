@@ -213,13 +213,13 @@ Hem simulat el sistema de la marquesina mitjançant l'algorisme _Event-Schedulin
 
 Hem escollit Zig @zig com el llenguatge per a implementar l'algorisme. Zig és un llenguatge de sistemes amb gestió de memòria manual i control de flux i memòria explícit, i tot i no tenir una _release_ estable, és absolutament funcional per a la gran majoria de casos d'ús. Hem escollit aquest llenguatge ja que al ser una simulació una tasca relativament exigent per a horitzons llargs o per a múltiples repeticions, ens voliem allunyar de llenguatges interpretats com Python o R, que haguessin donat resultats amb gran marge de millor segons l'òptim a nivell de temps i rendiment. També hem escollit usar Zig sobre C, ja que la filosofia de Zig és extremadament semblant a la de C (gestió de memòria manual i simplicitat) però amb sensibilitats modernes que prevenen molts dels problemes comuns que té C: violacions de segment, indeterminacions en codi i l'ús de `make` per a compilar el projecte.
 
-*Min-Heap per l'accés als esdeveniments*
+== Min-Heap d'Events esdeveniments
 
 L'algorisme _Event-Scheduling_ es basa en mantenir una llista ordenada dels esdeveniments generats segons el temps, i processar sempre el de menor temps. Per continuar l'algorisme, sempre que es processi un esdevieniment de tipus A, se'n genera un altre al futur i es guarda a la llista, de manera que en algun moment es traurà de la llista i serà processat, mantenint el bucle. Sobre la implementació d'aquesta llista - part més troncal de l'algorisme- la primera consideració és descartar l'ús d'una array o `ArrayList` per a mantenir els esdeveniments a memòria, ja que només es necessita l'esdeveniment amb el temps més petit. L'ús de qualsevol tipus d'estructura de dades estil llista implicaria una inserció a la llista de cost $O(n)$, ja que s'haurien de desplaçar tots els elements de la llista una posició per a fer lloc al nou. L'avantatge de l'ús d'una llista ordenada és que té un accés molt ràpid, $O(log_2(n))$ ja que només hem de cercar la llista un cop.
 
 En el cas de l'_Event-Scheduling_ no hem d'accedir a un element qualsevol, sinó que només hem d'accedir al primer element - el més pròxim al temps actual. Per tant, hem emprat una implementació de l'estructura Heap @heap, que guarda els elements sense ordre, però garanteix que el primer element de la estructura sempre serà el de menor temps, donant-nos un accés de $O(1)$. En comparació amb la llista, també guanyem en inserció, ja que un heap té un cost d'accés de $O(log_2(n))$ al usar una estructura d'arbre binari per emmagatzemar les dades. El heap és la millor estructura per aquest problema, ja que els requeriments que tenim són als d'accedir al mínim element el més ràpid possible, sense necessitat d'accedir o eliminar un esdeveniment qualsevol. Això sí, si que hem emprat una `ArrayList` per a guardar-nos la traça del problema.
 
-*Descacoblament Distribució-Lògica*
+== Descacoblament de les Distribucions
 
 Tornant al cas concret del problema que ens ocupa, el problema té tres tipus d'esdeveniments (Arribada, Servei, Embarcament, però té quatre paràmetres aleatòris: rati d'arribades ($lambda$), rati de serveis ($mu$), capacitat del bus $C$ i temps d'embarcament $Y$, seguint totes una distribució. Hem aconseguit desacoplar completament la implementació i la lògica de l'algorisme mitjançant una unió sobre els diferents tipus que es vulguin demanar. Adicionalment de la Constant, Uniforme i Exponencial, s'han afegit la Exponencial truncada, la Hypo-Exponencial, la Hyper-Exponencial i la $k$-Erlang. S'ha emprat una estructura general que s'instancia com un tipus de distribució concreta, i no haver de programar ni la lògica de la generació de paràmetres aleartòris ni que a dins de l'algorisme hi hagi lògica de selecció segons el tipus de distribució. És a dir, la lògica de l'_Event-Scheduling_ i les distribucions dels paràmetres estan completament desacoplades. Això ho hem aconseguit mitjançant l'estructura @distribution.
 
@@ -266,8 +266,26 @@ pub const SimConfig = struct {
 caption: [Definició de l'estructura SimConfig ]
 ) <simconfig>
 
+== Implementació Exponencial Truncada
 
-*Entrada de paràmetres*
+A l'enunciat de la pràctica se'ns ha donat la densitat d'una Exponencial Truncada, que és la següent:
+
+$ f_gamma (c) =  frac(2, K(e^2-1)) "exp"{ 2 (1 - frac(c,K))}, 0 <= c <= K $
+
+on $K$ és la capacitat màxima de l'autobús. En aquest cas, l'exponencial truncada és una exponencial amb paràmetre $lambda = 2 / K$, així que la capacitat màxima de l'autobús està lligada amb el seu rati.
+
+Al tenir la densitat, implementarem el mètode de la inversa per generar nombres aleatòris de l'exponencial truncada. Integrant la funció obtenim la densitat següent (el càlcul complet el pot trobar a @exp-trunc-appendix):
+
+$ F_gamma (c) = integral_0^c f_gamma (x) d x = frac(e^2 - e^2(1- frac(c, K)), e^2 - 1) $
+
+Sabuda la densitat, calculem $F^(-1)_gamma (c)$ per a implementar-ho amb el mètode de la inversa (càlcul complet a @exp-trunc-appendix), i obtenim:
+
+$ F_gamma^(-1) (u) = K ( 1 - frac(1,2) ln( e^2 - u(e^2 - 1) ))) $
+
+Per tant, utilitzem el mètode de generació de nombres aleatòris de la inversa per a generar un nombre qualsevol utilitzant aquesta distribució com $c = F^(-1)_gamma (u), 0 <= u <= 1$, tal com es veu implementat a `rng.zig`.
+
+
+== Entrada de paràmetres
 
 Comparat amb la preentrega, és molt farragós introduïr una Hipoexponencial o una $k$-Erlang mitjançant la terminal, així que hem implementat un JSON on s'ha d'introduïr l'estructra `SimConfig` i la distribució apropiada per a cada paràmetre, com es mostra a @input-json: 
 
@@ -303,7 +321,7 @@ Adicionalment, es pot escollir el nombre de iteracions que es vol que es faci el
 
 Per últim, `system_capacity = 0` farà que el programa carregui `std.math.maxInt(u64)` al programa, és a dir, el sistema tindrà capacitat infinita.
 
-*Fitxers Traça i Usertimes.csv*
+== Fitxers Traça i Usertimes.csv
 
 Escriure a fitxer dins de un bucle genera una interrupció del programa a nivell de SO per a escriure els continguts nous. Aquesta és una pràctica poc recomanda per obtenir un bon rendiment, així que explicarem com hem implementat l'escriptura a fitxer i explicant una solució vàlida però potencialment perillosa.
 
@@ -686,6 +704,9 @@ La realització d'aquesta pràctica ha permès desenvolupar i validar un motor d
 + 
   Finalment, l'anàlisi de la instància ens porta a una conclusió pràctica rellevant des del punt de vista més aplicat dins de la Investigació Operativa. Tot i que hem demostrat analíticament i empíricament que el sistema és estable per a $rho=0.9$, el resultat és operativament inviable. Un temps d'espera mitjà de més de 3.5 hores per agafar un autobús és inacceptable des del punt de vista de l'usuari. Això demostra que garantir $rho < 1$ és una condició necessària per a l'estabilitat, però no suficient per a garantir una qualitat de servei adequada. Això permet arribar a la conclusió operativa que per arribar un funcionament òptim, el sistema requeriria augmentar la freqüència de pas o la capacitat dels vehicles per reduir el factor de càrrega a nivells factibles.
 
+#pagebreak()
+#bibliography("works.yml")
+
 #counter(heading).update(0)
 #set heading(numbering: (..nums) => {
   let vals = nums.pos()
@@ -697,7 +718,6 @@ La realització d'aquesta pràctica ha permès desenvolupar i validar un motor d
 }, supplement: none)
 
 #pagebreak()
-
 = Ús i Execució del Codi
 
 A l'entrega s'hi poden trobar els binaris per a les tres plataformes i arquitectures principals (MacOS (aarch64), Windows (x86) i GNU-Linux (x86)) per executar el codi. Per tant, per a executar-lo és tan senzill com obrir una terminal, navegar fins a la carpeta on es troba el binari i executar-lo. El programa necessita un argument a la terminal, el camí relatiu des de l'executable al json.
@@ -735,6 +755,43 @@ Al fitxer `multiheap.zig` s'ha reimplementat la mateixa estructura amb una `Muli
 
 Així i tot, no s'han aconseguit millores empíriques amb aquesta nova implementació. Sospitem que la raó és que l'estructura `Event` és massa petita per verure beneficis reals al dividir-la en multiples llistes, així que l'implementació final utiltiza `structheap.zig`.
 
+#pagebreak()
+= Càlculs Exponencial Truncada
+<exp-trunc-appendix>
+
+La intergral és simple, i la resolem mitjançant un canvi de variable. Recordem la densitat de la exponencial truncada.
+
+$ f_gamma(c) = (2)/(K(e^2 - 1)) exp(2(1 - c/K)), quad 0 <= c <= K $
+
+Integrem entre $0$ i $c$ seguint la defnició de funció de accumulada.
+
+$
+  F(c) &= integral_0^c f_gamma(t) dif t \
+       &= (2)/(K(e^2 - 1)) integral_0^c exp(2(1 - t/K)) dif t \
+       &= -(1)/(e^2 - 1) [ exp(2(1 - t/K)) ]_0^c \
+       &= -(1)/(e^2 - 1) (e^(2(1 - c/K)) - e^2) \
+       &= (e^2 - e^(2(1 - c/K))) / (e^2 - 1)
+$
+
+Trobem la inversa igualant la variable $u ~ U[0,1]$ igual a $F(c)$ i resolent per $c$:
+
+$
+  u &= (e^2 - e^(2(1 - c/K))) / (e^2 - 1) \
+  u(e^2 - 1) &= e^2 - e^(2(1 - c/K)) \
+  e^(2(1 - c/K)) &= e^2 - u(e^2 - 1)
+$
+
+Apliquem el logaritme natural als dos costats:
+
+$
+  2(1 - c/K) &= ln(e^2 - u(e^2 - 1)) \
+  1 - c/K &= 1/2 ln(e^2 - u(e^2 - 1)) \
+  c/K &= 1 - 1/2 ln(e^2 - u(e^2 - 1))
+$
+
+Resolent per $c$ trobem el resultat final.
+
+$ c = K [ 1 - 1/2 ln(e^2 - u(e^2 - 1)) ] $
 
 #pagebreak()
 = Implementacions Extres <app:implementacions_extres>
@@ -748,4 +805,5 @@ Seguidament, per confirmar que erem capaços d'implementar Zig amb prou soltura,
 Com a detall extra, vàrem comentar de paraula que entregariem una llibreria de python amb l'algorisme compilat. Malauradament, això no ha estat possible per problemes tècnics que van més enllà de l'abast de la pràctica i dels nostres coneixements. Per poder empaquetar el binari de Zig en una llibreria de Python, s'ha intentat usar `Ziggy-Pydust`, una llibreria que genera totes les dependències extres per a poder cridar el binari des de Python. Amb poc intents i seguint la documentació, hem aconseguit que funcioni perfectament per a Linux, però la llibreria és massa jove com per a tenir support per a Windows, per això vam haver de desestimar la iniciativa i entregar un binari directament.
 
 
-#bibliography("works.yml")
+
+
