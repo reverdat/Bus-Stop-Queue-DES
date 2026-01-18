@@ -409,18 +409,18 @@ $
   hat(L_q) = 1.5769 plus.minus 1.19 dot 10^(-4).
 $
 $
-  hat(W_q) = 0.3183 plus.minus 2.20 dot 10^(-5).
+  hat(W_q) = 0.3182 plus.minus 2.20 dot 10^(-5).
 $
 $
   hat(W_s) = 0.
 $
 
 $
-  hat(W) = 0.3183 plus.minus 2.20 dot 10^(-5).
+  hat(W) = 0.3182 plus.minus 2.20 dot 10^(-5).
 $
 \
 
-Observem que sota aquests condicions tenim $hat(W_s) = 0$, un fet que és d'esperar ja que en l'arribada d'un bus a la parada aquest serveix immediatament als $X = 3$ primers usuaris de la parada com a conseqüència del temps d'embarcament nul. Aquest fet també provoca que observem $hat(L) = hat(L_q)$, ja que no hi ha pràcticament distinció entre cua i sistema d'espera. Finalment, cal destacar que tenim $hat(L)\/hat(W) approx 4.9541 approx 5 = lambda$, verificant la Llei de Little.
+Observem que sota aquests condicions tenim $hat(W_s) = 0$, un fet que és d'esperar ja que en l'arribada d'un bus a la parada aquest serveix immediatament als $X = 3$ primers usuaris de la parada com a conseqüència del temps d'embarcament nul. Aquest fet també provoca que observem $hat(L) = hat(L_q)$, ja que no hi ha pràcticament distinció entre cua i sistema d'espera. Finalment, cal destacar que tenim $hat(L)\/hat(W) approx 4.9557 approx 5 = lambda$, verificant la Llei de Little.
 
 == Definició de la instància #label("sec:inst")
 L'entrega final incrementa la complexitat del model de simulació mitjançant distribucions temporals amb memòria i factors de capacitat molt limitats. En particular, els paràmetres assignats pel Grup 2 són els següents:
@@ -502,7 +502,14 @@ Cal destacar però que la marquesina no té capacitat finita, de forma que la cu
 
 == Resultats de la instància
 
-Finalment, encapsulem el conjunt de paràmetres de la instància del Grup 2 en la carpeta `input_parameters/grup2`, on trobem els fitxers `rho<j>.json`, un per cada factor de càrrega $rho_j$, $j = 1,dots,4$. Seguint l'enunciat de la pràctica fixem $T = 300$ min, de forma que no estem teòricament al límit, a un context on podríem trobar la Llei de Little, sino que el sistema està en un estat transitori. Donat que en aquest cas l'horitzó temporal és petit, realitzarem en cada cas $B = 10^7$ simulacions. Fixem també el paràmetre `seed = 42` per reproducibilitat:
+Finalment, encapsulem el conjunt de paràmetres de la instància del Grup 2 en la carpeta `input_parameters/grup2`, on trobem els fitxers `rho<j>.json`, un per cada factor de càrrega $rho_j$, $j = 1,dots,4$. Seguint l'enunciat de la pràctica fixem $T = 300$ min, de forma que no estem teòricament al límit, a un context on podríem trobar la Llei de Little, sino que el sistema està en un estat transitori. Donat que en aquest cas l'horitzó temporal és petit, realitzarem en cada cas $B = 10^7$ simulacions. Per tal de variar els escenaris i garantir la reproducibilitat, fixem les següents llavors al paràmetre `seed`:
+#align(center, table(
+  columns: 4,
+  stroke: none,
+  column-gutter: 2em, // Space between items
+  [$rho_1$, `seed = 12`], [$rho_2$, `seed = 23`], [$rho_3$, `seed = 34`], [$rho_4$, `seed = 56`]
+))
+
 
 #figure(
   caption: [Estimació de magnituds del S.E. (Grup 2, $T = 300$ min, $B = 10^7$)],
@@ -522,52 +529,52 @@ Finalment, encapsulem el conjunt de paràmetres de la instància del Grup 2 en l
     
     // Row 1: Avg Clients (L)
     $hat(L)$,   
-    $3.4890 plus.minus 8.19 dot 10^(-4)$,
-    $8.7156 plus.minus 2.64 dot 10^(-3)$,
-    $17.8954 plus.minus 6.13 dot 10^(-3)$,
-    $28.0258 plus.minus 9.30 dot 10^(-3)$,
+    $3.2080 plus.minus 6.96 dot 10^(-4)$,
+    $7.5329 plus.minus 2.10 dot 10^(-3)$,
+    $14.8468 plus.minus 4.98 dot 10^(-3)$,
+    $23.1410 plus.minus 7.92 dot 10^(-3)$,
     
     // Row 2: Avg Clients Queue (Lq)
     $hat(L_q)$, 
-    $3.4316 plus.minus 8.11 dot 10^(-4)$,
-    $8.5343 plus.minus 2.63 dot 10^(-3)$,
-    $17.5663 plus.minus 6.13 dot 10^(-3)$,
-    $27.6051 plus.minus 9.31 dot 10^(-3)$,
+    $3.1511 plus.minus 6.88 dot 10^(-4)$,
+    $7.3563 plus.minus 2.09 dot 10^(-3)$,
+    $14.5248 plus.minus 4.97 dot 10^(-3)$,
+    $22.7225 plus.minus 7.93 dot 10^(-3)$,
 
     // Row 3: Avg Queue Time (Wq)
     $hat(W_q)$, 
-    $11.3146 plus.minus 2.51 dot 10^(-3)$,
-    $15.8730 plus.minus 4.86 dot 10^(-3)$,
-    $23.4463 plus.minus 8.48 dot 10^(-3)$,
-    $30.9548 plus.minus 1.10 dot 10^(-2)$,
+    $10.3927 plus.minus 2.12 dot 10^(-3)$,
+    $13.6694 plus.minus 3.81 dot 10^(-3)$,
+    $19.3165 plus.minus 6.77 dot 10^(-3)$,
+    $25.3732 plus.minus 9.24 dot 10^(-3)$,
 
     // Row 4: Avg Service Time (Ws)
     $hat(W_s)$, 
-    $0.2815 plus.minus 3.50 dot 10^(-5)$,
-    $0.4443 plus.minus 5.30 dot 10^(-5)$,
-    $0.5714 plus.minus 5.70 dot 10^(-5)$,
-    $0.6327 plus.minus 5.80 dot 10^(-5)$,
+    $0.2791 plus.minus 3.40 dot 10^(-5)$,
+    $0.4316 plus.minus 4.60 dot 10^(-5)$,
+    $0.5497 plus.minus 4.90 dot 10^(-5)$,
+    $0.6099 plus.minus 4.80 dot 10^(-5)$,
 
     // Row 5: Avg Total Time (W)
     $hat(W)$,   
-    $11.5960 plus.minus 2.53 dot 10^(-3)$,
-    $16.3173 plus.minus 4.89 dot 10^(-3)$,
-    $24.0177 plus.minus 8.49 dot 10^(-3)$,
-    $31.5874 plus.minus 1.10 dot 10^(-2)$,
+    $10.6718 plus.minus 2.14 dot 10^(-3)$,
+    $14.1010 plus.minus 3.84 dot 10^(-3)$,
+    $19.8662 plus.minus 6.79 dot 10^(-3)$,
+    $25.9830 plus.minus 9.25 dot 10^(-3)$,
 
     // Row 6: L/W (Little's Law Check)
     $hat(L)\/hat(W)$,   
-    $0.3008$,
-    $0.5341$,
-    $0.7450$,
-    $0.8872$,
+    $0.3006$,
+    $0.5342$,
+    $0.7473$,
+    $0.8906$,
 
     // Row 7: Lq/Wq
     $hat(L_q)\/hat(W_q)$,   
-    $0.3033$,
-    $0.5377$,
-    $0.7492$,
-    $0.8917$,
+    $0.3032$,
+    $0.5382$,
+    $0.7519$,
+    $0.8955$,
 
     table.hline(stroke: 1pt),
   ),
@@ -577,15 +584,15 @@ Finalment, encapsulem el conjunt de paràmetres de la instància del Grup 2 en l
 La @tab:inst presenta els resultats obtinguts després d'executar $B= 10^7$ de rèpliques per a cada escenari de càrrega. L'anàlisi d'aquestes magnituds ens permet destacar quatre comportaments fonamentals del sistema:
 
 + 
-  $hat(L)\/hat(W)$ aproxima amb precisió la freqüència d'arribades ($lambda approx rho$) per als escenaris de càrrega baixa i mitjana. No obstant això, per al cas de màxima congestió ($rho=0.90$), el rati obtingut és de $0.8872$, lleugerament inferior al teòric.
+  $hat(L)\/hat(W)$ aproxima amb precisió la freqüència d'arribades ($lambda approx rho$) per als escenaris de càrrega baixa i mitjana. No obstant això, per al cas de màxima congestió ($rho=0.90$), el rati obtingut és de $0.8906$, lleugerament inferior al teòric.
 
 + 
   A diferència de models més simples, el temps mig d'espera no és constant sinó que creix significativament amb la congestió.
-  - Amb baixa càrrega, $rho=0.3$, l'espera és d'aproximadament $11.3$ minuts. Tenint en compte que l'interval mig entre busos és de aproximadament $10$ minuts, això indica que la gran majoria d'usuaris pugen al primer autobús que arriba.
-  - Amb alta càrrega, $rho=0.9$, l'espera es dispara fins als $31$ minuts. Això implica que, en mitjana, un usuari ha de deixar passar entre 2 i 3 autobusos abans de poder pujar-hi, evidenciant l'impacte crític de la capacitat limitada provocada per la distribució exponencial truncada.
+  - Amb baixa càrrega, $rho=0.3$, l'espera és d'aproximadament $10.39$ minuts. Tenint en compte que l'interval mig entre busos és de aproximadament $10$ minuts, això indica que la gran majoria d'usuaris pugen al primer autobús que arriba.
+  - Amb alta càrrega, $rho=0.9$, l'espera es dispara fins als $25.37$ minuts. Això implica que, en mitjana, un usuari ha de deixar passar entre 2 i 3 autobusos abans de poder pujar-hi, evidenciant l'impacte crític de la capacitat limitada provocada per la distribució exponencial truncada.
 
 + 
-  La longitud mitjana de la cua creix de manera no lineal. Passem de tenir $3.4$ usuaris esperant en el cas tranquil a $27.6$ usuaris en el cas congestionat.
+  La longitud mitjana de la cua creix de manera no lineal. Passem de tenir $3.1$ usuaris esperant en el cas tranquil a $22.72$ usuaris en el cas congestionat.
 
 + 
   Els intervals de confiança obtinguts són extremadament estrets (amb un error relatiu inferior a l'1% en tots els casos). Això confirma que el nombre de rèpliques utilitzat ($B=10^7$) ha estat suficient per proporcionar estimadors molt fiables del comportament mitjà del sistema.
@@ -601,7 +608,7 @@ La @tab:inst presenta els resultats obtinguts després d'executar $B= 10^7$ de r
 A l'execució de la configuració desginada per l'enunciat de la pràcica hem pogut observar com la proporció entre els valors estimats de $L$ i $W$, així com $L_q$ i $W_q$ s'aproxima en cada cas a $lambda_j$. No obstant, aquesta aproximació no és molt propera, un fet que és d'esperar degut al horitzó fixat de $T = 300$. 
 \
 
-En aquest apartat volem anar més enllà del _scope_ del que es demana a l'enunciat per aprofitar per posar a prova la nostra implementació del simulador, i aproximar de forma arbitràriament precisa aquests quocients mitjançant un horitzó de $T = 10^6$ min i $B = 10^4$ simulacions mentres mantenim la resta de paràmetres igual. Els fitxers de configuració de paràmetres en aquest cas són `input_params/little/rho<j>.json` per $j=1,...,4$
+En aquest apartat volem anar més enllà del _scope_ del que es demana a l'enunciat per aprofitar per posar a prova la nostra implementació del simulador, i aproximar de forma arbitràriament precisa aquests quocients mitjançant un horitzó de $T = 10^6$ min i $B = 10^4$ simulacions mentres mantenim la resta de paràmetres igual. Els fitxers de configuració de paràmetres en aquest cas són `input_params/little/rho<j>.json` per $j=1,...,4$.
 
 #figure(
   caption: [Estimació de magnituds del S.E. (Grup 2, $T = 10^6$ min, $B = 10^4$)],
@@ -621,52 +628,52 @@ En aquest apartat volem anar més enllà del _scope_ del que es demana a l'enunc
     
     // Row 1: Avg Clients (L)
     $hat(L)$,   
-    $3.6855 plus.minus 5.07 dot 10^(-4)$,
-    $9.9791 plus.minus 2.22 dot 10^(-3)$,
-    $29.0626 plus.minus 1.47 dot 10^(-2)$,
-    $193.5186 plus.minus 5.94 dot 10^(-1)$,
+    $3.3588 plus.minus 4.23 dot 10^(-4)$,
+    $8.2986 plus.minus 1.54 dot 10^(-3)$,
+    $19.8677 plus.minus 7.02 dot 10^(-3)$,
+    $53.6681 plus.minus 4.68 dot 10^(-2)$,
     
     // Row 2: Avg Clients Queue (Lq)
     $hat(L_q)$, 
-    $3.6229 plus.minus 5.02 dot 10^(-4)$,
-    $9.7723 plus.minus 2.21 dot 10^(-3)$,
-    $28.6535 plus.minus 1.46 dot 10^(-2)$,
-    $192.9403 plus.minus 5.94 dot 10^(-1)$,
+    $3.2972 plus.minus 4.18 dot 10^(-4)$,
+    $8.1025 plus.minus 1.53 dot 10^(-3)$,
+    $19.4902 plus.minus 7.00 dot 10^(-3)$,
+    $53.1410 plus.minus 4.68 dot 10^(-2)$,
 
     // Row 3: Avg Queue Time (Wq)
     $hat(W_q)$, 
-    $11.9932 plus.minus 1.57 dot 10^(-3)$,
-    $18.2411 plus.minus 4.03 dot 10^(-3)$,
-    $38.1210 plus.minus 1.93 dot 10^(-2)$,
-    $214.2862 plus.minus 6.59 dot 10^(-1)$,
+    $10.9070 plus.minus 1.30 dot 10^(-3)$,
+    $15.1096 plus.minus 2.79 dot 10^(-3)$,
+    $25.9031 plus.minus 9.22 dot 10^(-3)$,
+    $58.9621 plus.minus 5.17 dot 10^(-2)$,
 
     // Row 4: Avg Service Time (Ws)
     $hat(W_s)$, 
-    $0.2923 plus.minus 2.10 dot 10^(-5)$,
-    $0.4712 plus.minus 3.10 dot 10^(-5)$,
-    $0.6289 plus.minus 3.50 dot 10^(-5)$,
-    $0.7260 plus.minus 3.50 dot 10^(-5)$,
+    $0.2885 plus.minus 1.90 dot 10^(-5)$,
+    $0.4510 plus.minus 2.70 dot 10^(-5)$,
+    $0.5867 plus.minus 3.00 dot 10^(-5)$,
+    $0.6690 plus.minus 3.00 dot 10^(-5)$,
 
     // Row 5: Avg Total Time (W)
     $hat(W)$,   
-    $12.2855 plus.minus 1.58 dot 10^(-3)$,
-    $18.7123 plus.minus 4.05 dot 10^(-3)$,
-    $38.7499 plus.minus 1.94 dot 10^(-2)$,
-    $215.0122 plus.minus 6.59 dot 10^(-1)$,
+    $11.1955 plus.minus 1.31 dot 10^(-3)$,
+    $15.5606 plus.minus 2.80 dot 10^(-3)$,
+    $26.4898 plus.minus 9.24 dot 10^(-3)$,
+    $59.6311 plus.minus 5.17 dot 10^(-2)$,
 
     // Row 6: L/W (Little's Law Check)
     $hat(L)\/hat(W)$,   
-    $0.2999$,
+    $0.3000$,
     $0.5333$,
     $0.7500$,
     $0.9000$,
 
     // Row 7: Lq/Wq
     $hat(L_q)\/hat(W_q)$,   
-    $0.3021$,
-    $0.5357$,
-    $0.7516$,
-    $0.9004$,
+    $0.3023$,
+    $0.5362$,
+    $0.7524$,
+    $0.9013$,
 
     table.hline(stroke: 1pt),
   ),
@@ -676,15 +683,15 @@ En aquest apartat volem anar més enllà del _scope_ del que es demana a l'enunc
 A la @tab:little presentem els resultats amb un horitzó temporal llunyà ($T = 10^6$), la qual cosa ens permet observar el vertader règim estacionari del sistema. En efecte:
 
 + 
-  Comparant amb els resultats anteriors ($T=300$), veiem que per a càrregues baixes ($rho=0.3$) els resultats són idèntics ($hat(L_q) approx 3.6$). En canvi, per a $rho=0.9$, la cua mitjana ha passat de $28$ a $193$. Això demostra que amb $T=300$ el sistema encara es trobava en un estat transitori i no havia tingut temps d'assolir l'estat d'equilibri.
+  Comparant amb els resultats anteriors ($T=300$), veiem que per a càrregues baixes ($rho=0.3$) els resultats són pràcticament idèntics ($hat(L_q) approx 3.29$). En canvi, per a $rho=0.9$, la cua mitjana ha passat de $22$ a $53$. Això demostra que amb $T=300$ min el sistema encara es trobava en un estat transitori i no havia tingut temps d'assolir l'estat d'equilibri.
 
 +
-  Tot i que per a $rho=0.90$ observem valors molt elevats ($hat(L_q) approx 193$ usuaris), aquests són valors finits i convergents. Si el sistema fos inestable ($rho > 1$), amb un horitzó de $T=10^6$, la cua hauria crescut arbitràriament. El fet que s'estabilitzi confirma que $rho < 1$, tot i que el sistema es troba en un estat de congestió màxima.
+  Tot i que per a $rho=0.90$ observem valors molt elevats ($hat(L_q) approx 53$ usuaris), aquests són valors finits i convergents. Si el sistema fos inestable ($rho > 1$), amb un horitzó de $T=10^6$ la cua hauria crescut arbitràriament. El fet que s'estabilitzi confirma que $rho < 1$, tot i que el sistema es troba en un estat de congestió màxima.
 + 
   Gràcies a l'extensió de $T$, observem com el rati $hat(L)\/hat(W)$ per a $rho=0.90$ és exactament $0.9000$, el·liminant així el biaix introduït per la situació d'alta congestió al règim transitori.
 
 +
-  Malgrat ser estable matemàticament, un temps d'espera de $hat(W_q) approx 214$ minuts (més de 3.5 hores) indica que el servei és inacceptable a efectes pràctics.
+  Malgrat ser estable matemàticament, un temps d'espera de $hat(W_q) approx 58$ minuts, és a dir, aproximadament $1$ h, indica que el servei és inacceptable a efectes pràctics quan ho comparem amb les altres situacions.
 
 #pagebreak()
 
@@ -696,7 +703,7 @@ La realització d'aquesta pràctica ha permès desenvolupar i validar un motor d
   La implementació ha demostrat ser correcta i precisa. En la primera fase, la coincidència gairebé exacta entre els valors teòrics i els simulats per a la cua $M\/M^([X])\/1\/K$ (amb un error relatiu inferior al $0.01%$) ha servit per certificar el bon funcionament del nucli del simulador.
 
 + 
-  L'extensió de l'horitzó temporal de $T = 300$ min a $T = 10^6$ min ens ha demostrat que en sistemes amb alta càrrega ($rho=0.9$), les simulacions de curta durada introdueixen un biaix sobre les estimacions de les magnituts del sistema, ja que mostra un estat transitori on la cua sembla moderada ($hat(L_q) approx 28$). Ha estat amb $T = 10^6$ que hem pogut observar el veritable règim estacionari, on la cua s'estabilitza en valors molt superiors ($hat(L_q) approx 193$).
+  L'extensió de l'horitzó temporal de $T = 300$ min a $T = 10^6$ min ens ha demostrat que en sistemes amb alta càrrega ($rho=0.9$), les simulacions de curta durada introdueixen un biaix sobre les estimacions de les magnituts del sistema, ja que mostra un estat transitori on la cua sembla moderada ($hat(L_q) approx 22$). Ha estat amb $T = 10^6$ que hem pogut observar el veritable règim estacionari, on la cua s'estabilitza en valors molt superiors ($hat(L_q) approx 53$).
 
 + 
   Hem comprovat que la Llei de Little es troba present en tots els casos, però la seva verificació empírica depèn estretament de l'estabilitat temporal. Mentre que en l'escenari de $T=300$ s'observaven petites desviacions degudes a l'estat transitori, en l'escenari de $T=10^6$ la relació s'ha complert amb gran precisió fins i tot en el pitjor cas de càrrega.
