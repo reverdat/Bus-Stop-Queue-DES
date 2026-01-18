@@ -399,6 +399,24 @@ Cal destacar però que la marquesina no té capacitat finita, de forma que la cu
 
 == Resultats de la instància
 
+
+
+#let histogram_triplet(rho_val, folder_path, time_horizon) = {
+  figure(
+    grid(
+      columns: (1fr, 1fr, 1fr),
+      gutter: 0.5em,
+      image(folder_path + "/histogram_Wq.png", width: 100%),
+      image(folder_path + "/histogram_Ws.png", width: 100%),
+      image(folder_path + "/histogram_W.png", width: 100%),
+    ),
+    caption: [
+      Histogrames de $W_q$, $W_s$ i $W$ per a $rho approx #rho_val$ ($T = #time_horizon$ min)
+    ],
+    supplement: "Figura",
+  )
+}
+
 Finalment, encapsulem el conjunt de paràmetres de la instància del Grup 2 en la carpeta `input_parameters/grup2`, on trobem els fitxers `rho<j>.json`, un per cada factor de càrrega $rho_j$, $j = 1,dots,4$. Seguint l'enunciat de la pràctica fixem $T = 300$ min, de forma que no estem teòricament al límit, a un context on podríem trobar la Llei de Little, sino que el sistema està en un estat transitori. Donat que en aquest cas l'horitzó temporal és petit, realitzarem en cada cas $B = 10^7$ simulacions. Per tal de variar els escenaris i garantir la reproducibilitat, fixem les següents llavors al paràmetre `seed`:
 #align(center, table(
   columns: 4,
@@ -496,9 +514,10 @@ La @tab:inst presenta els resultats obtinguts després d'executar $B= 10^7$ de r
 
 \
 
-#text(blue)[
-  TODO: Posar fotos rexulonas de histogrames de $W$ com demana our lord and saviour
-]
+#histogram_triplet("0.30", "img/hists_baseline/rho1", "300") <hist_base_rho1>
+#histogram_triplet("0.53", "img/hists_baseline/rho2", "300") <hist_base_rho2>
+#histogram_triplet("0.75", "img/hists_baseline/rho3", "300") <hist_base_rho3>
+#histogram_triplet("0.90", "img/hists_baseline/rho4", "300") <hist_base_rho4>
 
 == Validació de la Llei de Little
 
@@ -589,6 +608,12 @@ A la @tab:little presentem els resultats amb un horitzó temporal llunyà ($T = 
 
 +
   Malgrat ser estable matemàticament, un temps d'espera de $hat(W_q) approx 58$ minuts, és a dir, aproximadament $1$ h, indica que el servei és inacceptable a efectes pràctics quan ho comparem amb les altres situacions.
+
+#histogram_triplet("0.30", "img/hists_little/rho1", $10^6$) <hist_lit_rho1>
+#histogram_triplet("0.53", "img/hists_little/rho2", $10^6$) <hist_lit_rho2>
+#histogram_triplet("0.75", "img/hists_little/rho3", $10^6$) <hist_lit_rho3>
+#histogram_triplet("0.90", "img/hists_little/rho4", $10^6$) <hist_lit_rho4>
+
 
 #pagebreak()
 
