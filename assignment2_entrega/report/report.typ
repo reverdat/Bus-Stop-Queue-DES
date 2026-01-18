@@ -161,7 +161,7 @@ pub const SimConfig = struct {
 caption: [Definició de l'estructura SimConfig ]
 ) <simconfig>
 
-== Implementació Exponencial Truncada
+== Implementació Distribucions 
 
 A l'enunciat de la pràctica se'ns ha donat la densitat d'una Exponencial Truncada, que és la següent:
 
@@ -179,6 +179,17 @@ $ F_gamma^(-1) (u) = K ( 1 - frac(1,2) ln( e^2 - u(e^2 - 1) ))) $
 
 Per tant, utilitzem el mètode de generació de nombres aleatòris de la inversa per a generar un nombre qualsevol utilitzant aquesta distribució com $c = F^(-1)_gamma (u), 0 <= u <= 1$, tal com es veu implementat a `rng.zig`.
 
+Segons la nostra instància, també hem implementat un generador de nombres aleatòris de la Hypoexponencial, i adicionalment també hem fet implementacions de la Hyperexponencial i la Erlang. Per les dues primeres, ja que totes són combinacions de variables aleatòries seguint una exponencial les hem implementat seguint la definició:
+- Hypoexponencial: $ Y = sum_(i=1)^n X_i, X_i ~ "Exp"(lambda_i) $
+- K-Erlang: $ Y = sum_(i=1)^k X, X ~ "Exp"(lambda) $
+
+Per la Hyperexponencial amb la següent densitat @hyperexponential:
+
+$ f_Y (x) = sum_(i=1)^n f_(X_i) (x) p_i, X_i ~ "Exp"(lambda_i), sum_(i=1)^k p_i = 1 $
+
+La implementació primer determina quina una de les variables mitjançant un sampling, i després utilitzem la funció d'exponencial per a generar l'exponencial amb el paràmetre adequat.
+
+A l'annex @tests-ajustaments es poden trobar tests d'ajustament sobre les implementacions de totes les distribucions (exponencial, exponencial truncada, hypoexponencial, hyperexponencial i erlang) juntament amb els histogrames amb una mostra de 10000 mostres.
 
 == Entrada de paràmetres
 
@@ -788,6 +799,71 @@ $
 Resolent per $c$ trobem el resultat final.
 
 $ c = K [ 1 - 1/2 ln(e^2 - u(e^2 - 1)) ] $
+
+#pagebreak()
+= Tests d'ajustaments de les distribucions
+<tests-ajustaments>
+
+Per a comprovar que la implementació de tots els mètodes de generació de nombres aleatòris funcionen com s'espera, s'han realitzat tests d'ajustament sobre mostres de 10000 elements per a cada distribució.
+
+Les mostres es generen al fitxer `rng.zig`, on hi ha una funció `main` que reserva memòria, genera les mostres de totes les distribucions, i les escriu en fitxers a la carpeta `samples` dins de la carpeta `python`.
+
+Els test d'ajustament s'han implementat en python amb la llibreria `scipy.stats`, concretament s'ha emprat el test de Kolmogorov-Smirnoff @scipy-stats implementat en la funció `kstest` @scipy-kstest ; es pot trobar al fitxer `python/gof.py`.
+
+La taula @tab-pvalues conté els p-valors i les figures contenen els histogrames de l'exponencial @hist-exp, l'exponencial truncada @hist-texp, l'hypoexponencial @hist-hypo, la hyperexponencial @hist-hyper i l'erlang @hist-erlang. Totes les implementacions han superat els tests.
+
+
+#figure(
+  caption: [Taula de resultats amb els p-valors dels tests d'ajustament.],
+  table(
+    columns: (auto, auto, auto),
+    inset: 10pt,
+    align: (col, row) => (if col == 0 { left } else { center }),
+    stroke: none,
+    table.header(
+      [*FILE*], 
+      [*P-VALUE*], 
+      [*RESULT*],
+      table.hline(stroke: 1pt),
+    ),
+    [exponential.csv],      [0.1972], [PASS],
+    [trunc\_exp.csv],       [0.5051], [PASS],
+    [hypoexponential.csv],  [0.3667], [PASS],
+    [hyperexponential.csv], [0.5786], [PASS],
+    [erlang.csv],           [0.4344], [PASS],
+  )
+) <tab-pvalues>
+
+#figure(
+  image("img/exponential.png", width: 80%),
+  caption: [Histograma de la mostra per a una exponncial, amb la densitat teòrica superposada.],
+) <hist-exp>
+
+
+#figure(
+  image("img/trunc_exp.png", width: 80%),
+  caption: [Histograma de la mostra per a una exponncial, amb la densitat teòrica superposada.],
+) <hist-texp>
+
+#figure(
+  image("img/hypoexponential.png", width: 80%),
+  caption: [Histograma de la mostra per a una exponncial, amb la densitat teòrica superposada.],
+) <hist-hypo>
+
+#figure(
+  image("img/hyperexponential.png", width: 80%),
+  caption: [Histograma de la mostra per a una exponncial, amb la densitat teòrica superposada.],
+) <hist-hyper>
+
+#figure(
+  image("img/erlang.png", width: 80%),
+  caption: [Histograma de la mostra per a una exponncial, amb la densitat teòrica superposada.],
+) <hist-erlang>
+
+// #figure(
+//   image("img/exponential.png", width: 80%)
+//   caption: [Histograma de la mostra per a una exponncial, amb la densitat teòrica superposada.]
+// )
 
 #pagebreak()
 = Implementacions Extres <app:implementacions_extres>
