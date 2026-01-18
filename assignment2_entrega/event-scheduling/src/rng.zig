@@ -7,25 +7,6 @@ const pow = std.math.pow;
 
 const RNGError = error{InvalidRange};
 
-//
-// try stdout.flush();
-//
-// var unif_sample: ArrayList(T) = try runifSampleAlloc(&gpa, sample, T, a, b, &rand);
-// defer unif_sample.deinit(gpa);
-//
-// var weibull_sample: ArrayList(T) = try rwbSampleAlloc(&gpa, sample, T, lambda_w, k, &rand);
-// defer weibull_sample.deinit(gpa);
-//
-// var exp_sample: ArrayList(T) = try rexpSampleAlloc(&gpa, sample, T, lambda_e, &rand);
-// defer exp_sample.deinit(gpa);
-//
-// var cauchy_sample: ArrayList(T) = try rcauchySampleAlloc(&gpa, sample, T, gamma, x0, &rand);
-// defer cauchy_sample.deinit(gpa);
-//
-// var gamma_sample: ArrayList(T) = try rgammaSampleAlloc(&gpa, sample, T, shape, scale, &rand);
-// defer gamma_sample.deinit(gpa);
-//
-
 /// Generate a random number of a uniform distribution
 /// in the interval [a,b].
 pub fn runif(comptime T: type, a: T, b: T, rng: Random) !T {
@@ -45,6 +26,7 @@ pub fn rtexp(comptime T: type, k: T, rng: Random) T {
     const e = std.math.e;
     return k*(1 - 0.5*@log(e*e - u*(e*e - 1)));
 }
+
 /// Erlang distribution (Sum of k independent exponentials with rate lambda)
 /// k: shape (number of phases)
 /// lambda: rate
@@ -92,6 +74,96 @@ pub fn rhyper(comptime T: type, probs: []const T, rates: []const T, rng: Random)
     return rexp(T, rates[rates.len - 1], rng);
 }
 
+
+const Distribution = @import("config.zig").Distribution;
+
+/// Generates 'n' samples from any Distribution and returns them in an ArrayList.
+/// Caller owns the returned memory.
+pub fn sampleAlloc(
+    allocator: *Allocator, 
+    n: u32, 
+    dist: Distribution, 
+    rng: *Random
+) !ArrayList(f64) {
+    var list = ArrayList(f64){};
+    
+    try list.ensureTotalCapacity(allocator.*, n);
+
+    for (0..n) |_| {
+        const val = try dist.sample(rng.*);
+        list.appendAssumeCapacity(val);
+    }
+
+    return list;
+}
+
+pub fn main() !void {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    var gpa = arena.allocator();
+    
+    var prng = std.Random.DefaultPrng.init(blk: {
+        var seed: u64 = undefined;
+        try std.posix.getrandom(std.mem.asBytes(&seed));
+        break :blk seed;
+    });
+    var rand = prng.random();
+
+    const sample_size: u64 = 10000;
+
+    var hypo_rates = [_]f64{ 3.0, 7.0 };
+    const hyper_probs = [_]f64{ 0.3, 0.7 };
+    var hyper_rates = [_]f64{ 3.0, 7.0 };
+
+    const unif = Distribution{ .uniform = .{ .min = 0, .max = 1 } };
+    const exp = Distribution{ .exponential = 3  };
+    const texp = Distribution{ .exp_trunc = .{ .k = 30} };
+    const hypo = Distribution{ .hypo = &hypo_rates };
+    const hyper = Distribution{ .hyper = .{ .rates = &hyper_rates, .probs = &hyper_probs }};
+    const erlang = Distribution{ .erlang = .{ .k = 3, .lambda = 0.5 }};
+
+    var unif_sample = try sampleAlloc(&gpa, sample_size, unif, &rand);
+    defer unif_sample.deinit(gpa);
+
+    var exp_sample = try sampleAlloc(&gpa, sample_size, exp, &rand);
+    defer exp_sample.deinit(gpa);
+
+    var texp_sample = try sampleAlloc(&gpa, sample_size, texp, &rand);
+    defer texp_sample.deinit(gpa);
+    
+    var hypo_sample = try sampleAlloc(&gpa, sample_size, hypo, &rand);
+    defer hypo_sample.deinit(gpa);
+    
+    var hyper_sample = try sampleAlloc(&gpa, sample_size, hyper, &rand);
+    defer hyper_sample.deinit(gpa);
+
+    var erlang_sample = try sampleAlloc(&gpa, sample_size, erlang, &rand);
+    defer erlang_sample.deinit(gpa);
+
+    try write_sample_to_file("../solver/samples/uniform.csv", unif_sample);
+    try write_sample_to_file("../solver/samples/exponential.csv", exp_sample);
+    try write_sample_to_file("../solver/samples/trunc_exp.csv", texp_sample);
+    try write_sample_to_file("../solver/samples/hypoexponential.csv", hypo_sample);
+    try write_sample_to_file("../solver/samples/hyperexponential.csv", hyper_sample);
+    try write_sample_to_file("../solver/samples/erlang.csv", erlang_sample);
+}
+
+fn write_sample_to_file(name: []const u8, sample: ArrayList(f64)) !void {
+    const cwd = std.fs.cwd();
+    const file = try cwd.createFile(name, .{});
+    defer file.close();
+
+    var buf: [2048]u8 = undefined;
+    var stdout_file = file.writer(&buf);
+    const writer: *std.Io.Writer = &stdout_file.interface;
+
+    for (sample.items) |s| {
+        try writer.print("{d} ", .{s});
+    }
+    try writer.print("\n", .{});
+    try writer.flush();
+    return;
+}
 // petita nota sobre l'arraylist. A la següent funció, quan es crea una array list crea, en essència, una
 // struct amb un slice apuntant al heap i la capacitat d'aquest slice (que és un punter a una array + len).
 // Per tant, quan es retorna l'arrayList i no un punter a l'arraylist, el que es fa és una còpia d'aquesta mini
